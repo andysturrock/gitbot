@@ -15,7 +15,10 @@ export class LambdaStack extends Stack {
     const r53ZoneId = getEnv('R53_ZONE_ID', false)!;
     const lambdaVersion = getEnv('LAMBDA_VERSION', false)!;
     const customDomainName = getEnv('CUSTOM_DOMAIN_NAME', false)!;
-    const gitlabApprovalsDomainName = `gitlab-slack.${customDomainName}`;
+    const gitLabAppId = getEnv('GITLAB_APPID', false)!;
+    const gitLabSecret = getEnv('GITLAB_SECRET', false)!;
+    const gitLabCallbackUrl = getEnv('GITLAB_CALLBACK_URL', false)!;
+    const gitlabApprovalsDomainName = `gitbot.${customDomainName}`;
     // Semantic versioning has dots as separators but this is invalid in a URL
     // so replace the dots with underscores first.
     const lambdaVersionIdForURL = lambdaVersion.replace(/\./g, '_');
@@ -24,14 +27,26 @@ export class LambdaStack extends Stack {
     const handlePOSTPipelineEventLambda = new lambda.Function(this, "handlePOSTPipelineEventLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "aws/handlePOSTPipelineEvent.lambdaHandler",
+      handler: "handlePOSTPipelineEvent.lambdaHandler",
       logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'handlePOSTPipelineEventLambda'
     });
 
-    // Allow read access to the DyanamoDB table
-    props.slackIdToGCalTokenTable.grantReadData(handlePOSTPipelineEventLambda);  
-
+    // Create the lambda for handling the GitLab auth redirect
+    const handleGitLabAuthRedirectLambda = new lambda.Function(this, "handleGitLabAuthRedirectLambda", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
+      handler: "handleGitLabAuthRedirect.lambdaHandler",
+      logRetention: logs.RetentionDays.THREE_DAYS,
+      functionName: 'handleGitLabAuthRedirectLambda'
+    });
+    // Allow access to the DynamoDB table
+    props.slackIdToGitLabTokenTable.grantReadWriteData(handleGitLabAuthRedirectLambda);  
+    // Add some env vars for getting GitLab tokens
+    handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
+    handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
+    handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
+    
     // Get hold of the hosted zone which has previously been created
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'R53Zone', {
       zoneName: customDomainName,
@@ -57,8 +72,8 @@ export class LambdaStack extends Stack {
 
     // This is the API Gateway which then calls the initial response and auth redirect lambdas
     const api = new apigateway.RestApi(this, "APIGateway", {
-      restApiName: "GitLab Approvals",
-      description: "Service for handling approvals for GitLab pipelines in Slack.",
+      restApiName: "GitBot",
+      description: "GitLab Slack integation",
       deploy: false // create the deployment below
     });
 
@@ -79,10 +94,15 @@ export class LambdaStack extends Stack {
     const handlePOSTPipelineEventLambdaIntegration = new apigateway.LambdaIntegration(handlePOSTPipelineEventLambda, {
       requestTemplates: {"application/json": '{ "statusCode": "200" }'}
     });
-    const initialResponseResource = api.root.addResource('pipeline-event');
+    const handleGitLabAuthRedirectLambdaIntegration = new apigateway.LambdaIntegration(handleGitLabAuthRedirectLambda, {
+      requestTemplates: {"application/json": '{ "statusCode": "200" }'}
+    });
+    const handlePOSTPipelineEventResource = api.root.addResource('pipeline-event');
+    const handleGitLabAuthRedirectResource = api.root.addResource('gitlab-oauth-redirect');
     // And add the methods.
     // TODO add authorizer lambda
-    initialResponseResource.addMethod("POST", handlePOSTPipelineEventLambdaIntegration);
+    handlePOSTPipelineEventResource.addMethod("POST", handlePOSTPipelineEventLambdaIntegration);
+    handleGitLabAuthRedirectResource.addMethod("GET", handleGitLabAuthRedirectLambdaIntegration);
 
     // Create the R53 "A" record to map from the custom domain to the actual API URL
     new route53.ARecord(this, 'CustomDomainAliasRecord', {

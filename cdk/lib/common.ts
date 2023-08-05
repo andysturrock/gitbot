@@ -22,5 +22,5 @@ export function getEnv(name: string, optional = false): string | undefined {
 }
 
 export interface LambdaStackProps extends StackProps {
-  readonly slackIdToGCalTokenTable: dynamodb.Table;
+  readonly slackIdToGitLabTokenTable: dynamodb.Table;
 }

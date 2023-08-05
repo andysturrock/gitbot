@@ -34,7 +34,8 @@
 			],
 			"Resource": [
         "arn:aws:iam::089953642441:role/cdk-hnb659fds-deploy-role-089953642441-eu-west-2",
-        "arn:aws:iam::089953642441:role/cdk-hnb659fds-file-publishing-role-089953642441-eu-west-2"
+        "arn:aws:iam::089953642441:role/cdk-hnb659fds-file-publishing-role-089953642441-eu-west-2",
+        "arn:aws:iam::089953642441:role/cdk-hnb659fds-lookup-role-089953642441-eu-west-2"
       ]
 		}
   ]

@@ -56,7 +56,9 @@
                 "ecr:PutLifecyclePolicy",
                 "ecr:DeleteRepository",
                 "ecr:SetRepositoryPolicy",
-                "ecr:DescribeRepositories"
+                "ecr:DescribeRepositories",
+                "ecr:PutImageTagMutability",
+                "ecr:ListTagsForResource"
             ],
             "Resource": "arn:aws:ecr:eu-west-2:089953642441:repository/*"
         },
