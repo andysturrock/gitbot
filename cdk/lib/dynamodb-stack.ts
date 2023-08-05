@@ -11,9 +11,9 @@ export class DynamoDBStack extends Stack {
     this.slackIdToGitLabTokenTable = new dynamodb.Table(this, 'SlackIdToGitLabTokenTable', {
       tableName: "SlackIdToGitLabToken",
       partitionKey: {name: 'slack_id', type: dynamodb.AttributeType.STRING},
-      sortKey: {name: "gitlab_token", type: dynamodb.AttributeType.STRING},
+      // sortKey: {name: "gitlab_token", type: dynamodb.AttributeType.STRING},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      timeToLiveAttribute: 'ttl',
+      timeToLiveAttribute: 'expiry',
       removalPolicy: RemovalPolicy.DESTROY
     });
 

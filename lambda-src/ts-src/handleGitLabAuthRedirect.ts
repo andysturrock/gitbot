@@ -6,8 +6,6 @@ import {getToken, saveToken, updateToken} from './tokenStorage';
 async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
 
   try {
-    console.log(`event: ${util.inspect(event)}`);
-
     type QueryStringParameters = {
       code: string,
       state: string // This will contain the Slack user ID
@@ -16,7 +14,7 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     if(!event.queryStringParameters) {
       throw new Error("Missing event queryStringParameters");
     }
-    const slackUserId = queryStringParameters.code;
+    const slackUserId = queryStringParameters.state;
     
     const client_id = process.env.GITLAB_APPID;
     if(!client_id) {
@@ -56,13 +54,7 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     console.log(`status: ${util.inspect(status)}`);
     console.log(`data: ${util.inspect(data)}`);
 
-    const existingToken = await getToken(slackUserId);
-    if(existingToken) {
-      await updateToken(slackUserId, data.refresh_token);
-    }
-    else {
-      await saveToken(slackUserId, data.refresh_token);
-    }
+    await saveToken(slackUserId, data.refresh_token);
 
     const json = {
       msg: 'OK'
