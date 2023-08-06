@@ -1,5 +1,4 @@
 import axios, {AxiosRequestConfig} from 'axios';
-import util from 'util';
 
 type TokenResponse = {
   access_token: string,
@@ -9,7 +8,15 @@ type TokenResponse = {
   created_at: number
  };
 
-async function getAccessToken(refreshToken: string) {
+/**
+  * Gets a new set of tokens using the given refreshToken.
+  * Note that the refresh token itself will be updated,
+  * so the caller of this function is advised to re-persist
+  * the new refresh token that is returned.
+  * @param refreshToken 
+  * @returns a refreshed set of tokens
+  */
+async function refreshToken(refreshToken: string) {
 
   const client_id = process.env.GITLAB_APPID;
   if(!client_id) {
@@ -24,8 +31,6 @@ async function getAccessToken(refreshToken: string) {
     throw new Error("Missing env var GITLAB_CALLBACK_URL");
   }
 
-  // parameters = 'client_id=APP_ID&client_secret=APP_SECRET&refresh_token=REFRESH_TOKEN&grant_type=refresh_token&redirect_uri=REDIRECT_URI'
-  // RestClient.post 'https://gitlab.example.com/oauth/token', parameters
   const config: AxiosRequestConfig = {
     params: {
       client_id,
@@ -41,10 +46,8 @@ async function getAccessToken(refreshToken: string) {
   if(status !== 200) {
     throw new Error(`Error ${status}`);
   }
-  console.log(`status: ${util.inspect(status)}`);
-  console.log(`data: ${util.inspect(data)}`);
 
   return data;
 }
 
-export {getAccessToken};
+export {refreshToken as getAccessToken};

@@ -1,7 +1,7 @@
 import * as util from 'util';
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import axios, {AxiosRequestConfig} from 'axios';
-import {getToken, saveToken, updateToken} from './tokenStorage';
+import {saveToken} from './tokenStorage';
 
 async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
 

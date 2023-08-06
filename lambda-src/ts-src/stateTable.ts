@@ -1,17 +1,22 @@
 
-import {DynamoDBClient, UpdateItemCommand, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommandInput} from '@aws-sdk/client-dynamodb';
+import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput} from '@aws-sdk/client-dynamodb';
 
-const TTL_IN_DAYS = 7;
-const TableName = "SlackIdToGitLabToken";
+const TTL_IN_DAYS = 1;
+const TableName = "State";
 
-async function getToken(slackUserId: string) { 
+/**
+ * Gets the state for the given nonce.
+ * @param nonce 
+ * @returns stringified state or undefined if no state exists for the nonce
+ */
+async function getState(nonce: string) { 
   const ddbClient = new DynamoDBClient({});
 
   const params: QueryCommandInput = {
     TableName,
-    KeyConditionExpression: "slack_id = :slack_id",
+    KeyConditionExpression: "nonce = :nonce",
     ExpressionAttributeValues: {
-      ":slack_id" : {"S" : slackUserId}
+      ":nonce" : {"S" : nonce}
     }
   };
   const data = await ddbClient.send(new QueryCommand(params));
@@ -24,7 +29,12 @@ async function getToken(slackUserId: string) {
   }
 }
 
-async function saveToken(slackUserId: string, refreshToken: string) {
+/**
+ * Put (ie save new or overwite) state with nonce as the key
+ * @param nonce Key for the table
+ * @param state JSON value
+ */
+async function putState(nonce: string, state: string) {
   // The very useful TTL functionality in DynamoDB means we
   // can set a TTL on storing the refresh token.
   // DynamoDB will automatically delete the token in
@@ -38,8 +48,8 @@ async function saveToken(slackUserId: string, refreshToken: string) {
   const putItemCommandInput: PutItemCommandInput = {
     TableName,
     Item: {
-      slack_id: {S: slackUserId},
-      gitlab_token: {S: refreshToken},
+      nonce: {S: nonce},
+      state: {S: state},
       expiry: {N: `${Math.floor(ttl.getTime() / 1000)}`}
     }
   };
@@ -48,4 +58,5 @@ async function saveToken(slackUserId: string, refreshToken: string) {
 
   await ddbClient.send(new PutItemCommand(putItemCommandInput));
 }
-export {getToken, saveToken};
+
+export {getState, putState};

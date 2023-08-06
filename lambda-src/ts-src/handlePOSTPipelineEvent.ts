@@ -45,7 +45,10 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
 
     type PostResponse = string;
 
-    const url = 'https://hooks.slack.com/services/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';
+    const url = process.env.WEBHOOK_URL;
+    if(!url) {
+      throw new Error("Missing env var WEBHOOK_URL");
+    }
     const messageBody = {
       "text": `${util.inspect(pipelineEvent)}`
     };
