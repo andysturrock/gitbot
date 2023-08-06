@@ -79,8 +79,9 @@ export class LambdaStack extends Stack {
       logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'gitbot-handleGitLabAuthRedirectLambda'
     });
-    // Allow access to the relevant DynamoDB table
+    // Allow access to the relevant DynamoDB tables
     props.slackIdToGitLabTokenTable.grantReadWriteData(handleGitLabAuthRedirectLambda);
+    props.stateTable.grantReadWriteData(handleGitLabAuthRedirectLambda);
     // Add some env vars for getting GitLab tokens
     handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
     handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);

@@ -47,10 +47,8 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<void> {
     };
     const body = event as unknown as Body;
     
-    const nonce = crypto.randomBytes(16).toString('base64');
-
-    console.log(`nonce: ${util.inspect(nonce)}`);
-
+    // Using a nonce for the state mitigates CSRF attacks.
+    const nonce = crypto.randomBytes(16).toString('hex');
     const state = {
       nonce,
       slack_user_id: body.user_id

@@ -2,10 +2,12 @@ import * as util from 'util';
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import axios, {AxiosRequestConfig} from 'axios';
 import {saveToken} from './tokenStorage';
+import {deleteState, getState} from './stateTable';
 
 async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
 
   try {
+    console.log(`event.queryStringParameters: ${util.inspect(event.queryStringParameters)}`);
     type QueryStringParameters = {
       code: string,
       state: string // This will contain the Slack user ID
@@ -14,7 +16,15 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     if(!event.queryStringParameters) {
       throw new Error("Missing event queryStringParameters");
     }
-    const slackUserId = queryStringParameters.state;
+    const nonce = queryStringParameters.state;
+    console.log(`queryStringParameters: ${util.inspect(queryStringParameters)}`);
+
+    console.log(`Looking for state from nonce: ${nonce}`);
+    const state = await getState(nonce);
+    if(!state) {
+      throw new Error("Missing state.  Are you a cyber criminal?");
+    }
+    await deleteState(nonce);
     
     const client_id = process.env.GITLAB_APPID;
     if(!client_id) {
@@ -54,15 +64,25 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     console.log(`status: ${util.inspect(status)}`);
     console.log(`data: ${util.inspect(data)}`);
 
-    await saveToken(slackUserId, data.refresh_token);
+    await saveToken(state.slack_user_id, data.refresh_token);
 
-    const json = {
-      msg: 'OK'
-    };
+    const html = `
+<!DOCTYPE html>
+<html>
+<body>
 
+<h1>Authentication Success</h1>
+<p>You are now authenticated with GitLab.  You can now use other /gitbot slash commands.</p>
+
+</body>
+</html>
+    `;
     const result: APIGatewayProxyResult = {
-      body: JSON.stringify(json),
-      statusCode: 200
+      body: html,
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'text/html',
+      }
     };
 
     return result;
@@ -70,13 +90,25 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
   catch (error) {
     console.error(`Caught error: ${util.inspect(error)}`);
 
-    const json = {
-      error: JSON.stringify(util.inspect(error))
-    };
+    const html = `
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>Authentication Failure</h1>
+<p>There was an error:</p>
+<p>${JSON.stringify(util.inspect(error))}</p>
+
+</body>
+</html>
+    `;
 
     const result: APIGatewayProxyResult = {
-      body: JSON.stringify(json),
-      statusCode: 200
+      body: html,
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'text/html',
+      }
     };
     return result;
   }

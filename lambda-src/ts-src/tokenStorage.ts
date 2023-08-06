@@ -1,7 +1,14 @@
 
-import {DynamoDBClient, UpdateItemCommand, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, UpdateItemCommandInput} from '@aws-sdk/client-dynamodb';
+import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput} from '@aws-sdk/client-dynamodb';
 
-const TTL_IN_DAYS = 7;
+// The very useful TTL functionality in DynamoDB means we
+// can set a TTL on storing the refresh token.
+// DynamoDB will automatically delete the token in
+// ${TTL_IN_DAYS} days from now, so then the user will have to re-authenticate.
+// This is good security and also keeps down storage costs.
+// If the user has accessed any functionality then the token and the TTL will
+// be refreshed so the 7 days is really 7 days after last usage.
+const TTL_IN_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days
 const TableName = "SlackIdToGitLabToken";
 
 async function getToken(slackUserId: string) { 
@@ -25,15 +32,8 @@ async function getToken(slackUserId: string) {
 }
 
 async function saveToken(slackUserId: string, refreshToken: string) {
-  // The very useful TTL functionality in DynamoDB means we
-  // can set a TTL on storing the refresh token.
-  // DynamoDB will automatically delete the token in
-  // ${TTL_IN_DAYS} days from now, so then the user will have to re-authenticate.
-  // This is good security and also keeps down storage costs.
-  // If the user has accessed any functionality then the token and the TTL will
-  // be refreshed so the 7 days is really 7 days after last usage.
-  const ttl = new Date(Date.now());
-  ttl.setDate(ttl.getDate() + TTL_IN_DAYS);
+  const now = Date.now();
+  const ttl = new Date(now + TTL_IN_MS);
 
   const putItemCommandInput: PutItemCommandInput = {
     TableName,
