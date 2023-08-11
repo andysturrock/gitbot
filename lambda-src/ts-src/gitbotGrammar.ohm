@@ -1,0 +1,19 @@
+GitbotArgs {
+	Exp = EmptyExp | HelpExp | LoginExp | ProjectExp
+
+  EmptyExp = end
+    
+  HelpExp = "help" | "?"
+  
+  LoginExp = "login"
+  
+  ProjectExp = ("project" ProjectHelpExp) | ("project" ProjectConnectExp)
+  
+  ProjectHelpExp = HelpExp
+  
+  ProjectConnectExp = ProjectIdentifierExp "connect"
+  ProjectIdentifierExp = projectNamePartNoQuote | projectNamePartQuote
+  projectNamePartNoQuote = alnum (alnum|"-"|"_"|"'"|"?"|"!")*
+  projectNamePartQuote = "\"" alnum (space|alnum|"-"|"_"|"'"|"?"|"!")* "\""
+    
+}
