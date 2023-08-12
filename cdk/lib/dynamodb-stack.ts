@@ -5,12 +5,12 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 export class DynamoDBStack extends Stack {
   public readonly userDataTable: dynamodb.Table;
   public readonly stateTable: dynamodb.Table;
-  public readonly pipelineConfigTable: dynamodb.Table;
+  public readonly projectConfigTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    this.userDataTable = new dynamodb.Table(this, 'userDataTable', {
+    this.userDataTable = new dynamodb.Table(this, 'UserDataTable', {
       tableName: "UserData",
       partitionKey: {name: 'slack_id', type: dynamodb.AttributeType.STRING},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -26,17 +26,16 @@ export class DynamoDBStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY
     });
 
-    this.pipelineConfigTable = new dynamodb.Table(this, 'PipelineConfigTable', {
-      tableName: "PipelineConfig",
-      partitionKey: {name: 'pipeline_id', type: dynamodb.AttributeType.STRING},
+    this.projectConfigTable = new dynamodb.Table(this, 'ProjectConfigTable', {
+      tableName: "ProjectConfig",
+      partitionKey: {name: 'project_id', type: dynamodb.AttributeType.NUMBER},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      timeToLiveAttribute: 'expiry',
       removalPolicy: RemovalPolicy.DESTROY
     });
 
     // Create exports from the CF template so that CF knows that other stacks depend on this stack.
     this.exportValue(this.userDataTable.tableArn);
     this.exportValue(this.stateTable.tableArn);
-    this.exportValue(this.pipelineConfigTable.tableArn);
+    this.exportValue(this.projectConfigTable.tableArn);
   }
 }

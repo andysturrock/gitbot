@@ -28,34 +28,25 @@ export class LambdaStack extends Stack {
     // so replace the dots with underscores first.
     const lambdaVersionIdForURL = lambdaVersion.replace(/\./g, '_');
 
-    // Create the lambda for handling the slash command from Slack
-    const handleSlashCommandLambda = new lambda.Function(this, "handleSlashCommandLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handleSlashCommand.lambdaHandler",
-      logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleSlashCommandLambda'
-    });
-    handleSlashCommandLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
-
     // Create the lambda for handling interactions.  This one dispatches to other lambdas depending on
     // which interactive component has been used and what that needs to do.
     const handleInteractiveEndpointLambda = new lambda.Function(this, "handleInteractiveEndpointLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handleInteractiveEndpoint.lambdaHandler",
+      handler: "handleInteractiveEndpoint.handleInteractiveEndpoint",
       logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleInteractiveEndpointLambda'
+      functionName: 'gitbot-handleInteractiveEndpoint'
     });
     handleInteractiveEndpointLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
 
-    // Create the lambda for handling the approval and restart of the pipeline
+    // Create the lambda for handling the approval and restart of the pipeline.
+    // It is called from the handleInteractiveEndpointLambda.
     const handlePipelineApprovalLambda = new lambda.Function(this, "handlePipelineApprovalLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handlePipelineApproval.lambdaHandler",
+      handler: "handlePipelineApproval.handlePipelineApproval",
       logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handlePipelineApprovalLambda',
+      functionName: 'gitbot-handlePipelineApproval',
       timeout: Duration.seconds(10)
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
@@ -73,86 +64,106 @@ export class LambdaStack extends Stack {
     handlePipelineApprovalLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
     handlePipelineApprovalLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
 
-    // Create the lambda for handling project subcommands from the slash command
-    const handleProjectLambda = new lambda.Function(this, "handleProjectLambda", {
+    // Create the lambda for handling the slash command from Slack
+    const handleSlashCommandLambda = new lambda.Function(this, "handleSlashCommandLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handleProject.lambdaHandler",
+      handler: "handleSlashCommand.handleSlashCommand",
       logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleProjectLambda'
+      functionName: 'gitbot-handleSlashCommand'
     });
-    // This function is going to be invoked asynchronously, so set some extra config for that
-    new lambda.EventInvokeConfig(this, 'handleProjectLambdaEventInvokeConfig', {
-      function: handleProjectLambda,
-      maxEventAge: Duration.minutes(2),
-      retryAttempts: 2,
-    });
-    // Give the slash command lambda permission to invoke this one
-    handleProjectLambda.grantInvoke(handleSlashCommandLambda);
+    handleSlashCommandLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
 
-    // Create the lambda for handling the login argument from the slash command
-    const handleLoginLambda = new lambda.Function(this, "handleLoginLambda", {
+    // Create the lambda for handling project subcommands from the slash command.
+    // It is called from the handleSlashCommandLambda.
+    const handleProjectCommandLambda = new lambda.Function(this, "handleProjectCommandLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handleLogin.lambdaHandler",
+      handler: "handleProjectCommand.handleProjectCommand",
       logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleLoginLambda'
+      functionName: 'gitbot-handleProjectCommand',
+      timeout: Duration.seconds(10)
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
-    new lambda.EventInvokeConfig(this, 'handleLoginLambdaEventInvokeConfig', {
-      function: handleLoginLambda,
+    new lambda.EventInvokeConfig(this, 'handleProjectCommandLambdaEventInvokeConfig', {
+      function: handleProjectCommandLambda,
       maxEventAge: Duration.minutes(2),
       retryAttempts: 2,
     });
     // Give the slash command lambda permission to invoke this one
-    handleLoginLambda.grantInvoke(handleSlashCommandLambda);
+    handleProjectCommandLambda.grantInvoke(handleSlashCommandLambda);
     // Allow access to the relevant DynamoDB table
-    props.stateTable.grantReadWriteData(handleLoginLambda);
-    handleLoginLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
-    handleLoginLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
-    handleLoginLambda.addEnvironment('GITLAB_AUTHORIZE_URL', gitLabAuthorizeUrl);
-    handleLoginLambda.addEnvironment('GITLAB_SCOPES', gitLabScopes);
+    props.projectConfigTable.grantReadWriteData(handleProjectCommandLambda);
+    // It makes some API calls as the bot user.
+    handleProjectCommandLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
 
-    // Create the lambda for handling the pipeline events
+    // Create the lambda for handling the login subcommand from the slash command.
+    // It is called from the handleSlashCommandLambda.
+    const handleLoginCommandLambda = new lambda.Function(this, "handleLoginCommandLambda", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
+      handler: "handleLoginCommand.handleLoginCommand",
+      logRetention: logs.RetentionDays.THREE_DAYS,
+      functionName: 'gitbot-handleLoginCommand'
+    });
+    // This function is going to be invoked asynchronously, so set some extra config for that
+    new lambda.EventInvokeConfig(this, 'handleLoginCommandLambdaEventInvokeConfig', {
+      function: handleLoginCommandLambda,
+      maxEventAge: Duration.minutes(2),
+      retryAttempts: 2,
+    });
+    // Give the slash command lambda permission to invoke this one
+    handleLoginCommandLambda.grantInvoke(handleSlashCommandLambda);
+    // Allow access to the relevant DynamoDB table
+    props.stateTable.grantReadWriteData(handleLoginCommandLambda);
+    handleLoginCommandLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
+    handleLoginCommandLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
+    handleLoginCommandLambda.addEnvironment('GITLAB_AUTHORIZE_URL', gitLabAuthorizeUrl);
+    handleLoginCommandLambda.addEnvironment('GITLAB_SCOPES', gitLabScopes);
+
+    // Create the lambda for handling the project webhook events
+    const handleProjectHookEventLambda = new lambda.Function(this, "handleProjectHookEventLambda", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
+      handler: "handleProjectHookEvent.handleProjectHookEvent",
+      logRetention: logs.RetentionDays.THREE_DAYS,
+      functionName: 'gitbot-handleProjectHookEvent',
+      timeout: Duration.seconds(10)
+    });
+    handleProjectHookEventLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+
+    // Create the lambda for handling pipeline events
+    // It is called from the handleProjectHookEventLambda
     const handlePipelineEventLambda = new lambda.Function(this, "handlePipelineEventLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handlePipelineEvent.lambdaHandler",
+      handler: "handlePipelineEvent.handlePipelineEvent",
       logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handlePipelineEventLambda',
-      timeout: Duration.seconds(10)
-    });
-
-    // Create the lambda for doing all the approvals etc when we find a blocked pipeline
-    const handleBlockedPipelineLambda = new lambda.Function(this, "handleBlockedPipelineLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handleBlockedPipeline.lambdaHandler",
-      logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleBlockedPipelineLambda',
+      functionName: 'gitbot-handlePipelineEvent',
       timeout: Duration.seconds(10)
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
-    new lambda.EventInvokeConfig(this, 'handleBlockedPipelineLambdaEventInvokeConfig', {
-      function: handleBlockedPipelineLambda,
+    new lambda.EventInvokeConfig(this, 'handlePipelineEventLambdaEventInvokeConfig', {
+      function: handlePipelineEventLambda,
       maxEventAge: Duration.minutes(2),
       retryAttempts: 2,
     });
-    // Give the handlePipelineEventLambda permission to invoke this one
-    handleBlockedPipelineLambda.grantInvoke(handlePipelineEventLambda);
+    // Give the handleProjectHookEventLambda permission to invoke this one
+    handlePipelineEventLambda.grantInvoke(handleProjectHookEventLambda);
     // Allow access to the relevant DynamoDB tables
-    props.userDataTable.grantReadWriteData(handleBlockedPipelineLambda);
-    handleBlockedPipelineLambda.addEnvironment('SLACK_BOT_TOKEN', slackBotToken);
-    handleBlockedPipelineLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
-    handleBlockedPipelineLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+    props.userDataTable.grantReadWriteData(handlePipelineEventLambda);
+    props.projectConfigTable.grantReadData(handlePipelineEventLambda);
+    handlePipelineEventLambda.addEnvironment('SLACK_BOT_TOKEN', slackBotToken);
+    handlePipelineEventLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
+    handlePipelineEventLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
     
     // Create the lambda for handling the GitLab auth redirect
     const handleGitLabAuthRedirectLambda = new lambda.Function(this, "handleGitLabAuthRedirectLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
-      handler: "handleGitLabAuthRedirect.lambdaHandler",
+      handler: "handleGitLabAuthRedirect.handleGitLabAuthRedirect",
       logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleGitLabAuthRedirectLambda',
+      functionName: 'gitbot-handleGitLabAuthRedirect',
       timeout: Duration.seconds(10)
     });
     // Allow access to the relevant DynamoDB tables
@@ -207,7 +218,7 @@ export class LambdaStack extends Stack {
     });
 
     // Connect the API Gateway to the lambdas
-    const handlePipelineEventLambdaIntegration = new apigateway.LambdaIntegration(handlePipelineEventLambda, {
+    const handleProjectHookEventLambdaIntegration = new apigateway.LambdaIntegration(handleProjectHookEventLambda, {
       requestTemplates: {"application/json": '{ "statusCode": "200" }'}
     });
     const handleGitLabAuthRedirectLambdaIntegration = new apigateway.LambdaIntegration(handleGitLabAuthRedirectLambda, {
@@ -219,13 +230,13 @@ export class LambdaStack extends Stack {
     const handleInteractiveEndpointLambdaIntegration = new apigateway.LambdaIntegration(handleInteractiveEndpointLambda, {
       requestTemplates: {"application/json": '{ "statusCode": "200" }'}
     });
-    const handlePipelineEventResource = api.root.addResource('pipeline-event');
+    const handleProjectHookEventResource = api.root.addResource('projecthook-event');
     const handleGitLabAuthRedirectResource = api.root.addResource('gitlab-oauth-redirect');
     const handleSlashCommandResource = api.root.addResource('slash-command');
     const handleInteractiveEndpointResource = api.root.addResource('interactive-endpoint');
     // And add the methods.
     // TODO add authorizer lambda for the pipeline event lambda
-    handlePipelineEventResource.addMethod("POST", handlePipelineEventLambdaIntegration);
+    handleProjectHookEventResource.addMethod("POST", handleProjectHookEventLambdaIntegration);
     handleGitLabAuthRedirectResource.addMethod("GET", handleGitLabAuthRedirectLambdaIntegration);
     handleSlashCommandResource.addMethod("POST", handleSlashCommandLambdaIntegration);
     handleInteractiveEndpointResource.addMethod("POST", handleInteractiveEndpointLambdaIntegration);

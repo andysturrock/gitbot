@@ -5,10 +5,9 @@ import {saveToken} from './userDataTable';
 import {deleteState, getState} from './stateTable';
 import {getOIDCUserInfo} from './gitLabAPI';
 
-async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
 
   try {
-    console.log(`event.queryStringParameters: ${util.inspect(event.queryStringParameters)}`);
     type QueryStringParameters = {
       code: string,
       state: string // This will contain the Slack user ID
@@ -18,9 +17,6 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
       throw new Error("Missing event queryStringParameters");
     }
     const nonce = queryStringParameters.state;
-    console.log(`queryStringParameters: ${util.inspect(queryStringParameters)}`);
-
-    console.log(`Looking for state from nonce: ${nonce}`);
     const state = await getState(nonce);
     if(!state) {
       throw new Error("Missing state.  Are you a cyber criminal?");
@@ -62,8 +58,6 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     if(status !== 200) {
       throw new Error(`Error ${status}`);
     }
-    console.log(`status: ${util.inspect(status)}`);
-    console.log(`data: ${util.inspect(data)}`);
 
     // Get the GitLab user id for this user.  Could get this by decoding the token.
     // See https://docs.gitlab.com/ee/integration/openid_connect_provider.html
@@ -119,4 +113,3 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
   }
 }
 
-export {lambdaHandler};

@@ -9,9 +9,8 @@ import {SlashCommandPayload} from './slackTypes';
  * @param slashCommandPayload the payload from the original slash command
  * @returns void but posts the login message to Slack in response to the slash command.
  */
-async function lambdaHandler(slashCommandPayload: SlashCommandPayload): Promise<void> {
+export async function handleLoginCommand(slashCommandPayload: SlashCommandPayload): Promise<void> {
   try {
-    console.log(`slashCommandPayload: ${util.inspect(slashCommandPayload)}`);
     const authorizeUrl = process.env.GITLAB_AUTHORIZE_URL;
     if(!authorizeUrl) {
       throw new Error("Missing env var GITLAB_AUTHORIZE_URL");
@@ -77,5 +76,3 @@ async function lambdaHandler(slashCommandPayload: SlashCommandPayload): Promise<
     console.error(`Caught error: ${util.inspect(error)}`);
   }
 }
-
-export {lambdaHandler};
