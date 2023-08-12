@@ -130,6 +130,8 @@ export class LambdaStack extends Stack {
       functionName: 'gitbot-handleProjectHookEvent',
       timeout: Duration.seconds(10)
     });
+    // Allow access to the relevant DynamoDB tables
+    props.projectConfigTable.grantReadData(handleProjectHookEventLambda);
     handleProjectHookEventLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
 
     // Create the lambda for handling pipeline events
