@@ -77,10 +77,10 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
       const command = new InvokeCommand(input);
       const output = await lambdaClient.send(command);
       if(output.StatusCode != 202) {
-        throw new Error(`Failed to invoke gitbot-handleLoginLambda - error:${util.inspect(output.FunctionError)}`);
+        throw new Error(`Failed to invoke gitbot-handleLoginCommand - error:${util.inspect(output.FunctionError)}`);
       }
     }
-    else if(gitbotOptions.projectIdentifier || gitbotOptions.projectHelp) {
+    else if(gitbotOptions.projectIdentifier) {
       body.projectIdentifier = gitbotOptions.projectIdentifier;
       body.projectHelp = gitbotOptions.projectHelp;
       // TODO get this from config
@@ -98,8 +98,21 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
       const command = new InvokeCommand(input);
       const output = await lambdaClient.send(command);
       if(output.StatusCode != 202) {
-        throw new Error(`Failed to invoke gitbot-handleProjectLambda - error:${util.inspect(output.FunctionError)}`);
+        throw new Error(`Failed to invoke gitbot-handleProjectCommand - error:${util.inspect(output.FunctionError)}`);
       }
+    }
+    else if(gitbotOptions.projectHelp) {
+      blocks = blocks = {
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `/gitbot project <id|name> connect\nProject names with spaces should be "quoted".\nUsing the project id is likely to be more successful.`
+            }
+          }
+        ]
+      };
     }
     else {
       blocks = usageBlocks;

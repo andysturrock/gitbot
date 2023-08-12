@@ -96,6 +96,8 @@ export class LambdaStack extends Stack {
     props.projectConfigTable.grantReadWriteData(handleProjectCommandLambda);
     // It makes some API calls as the bot user.
     handleProjectCommandLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+    handleProjectCommandLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
+    handleProjectCommandLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
 
     // Create the lambda for handling the login subcommand from the slash command.
     // It is called from the handleSlashCommandLambda.
