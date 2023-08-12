@@ -102,4 +102,34 @@ export type ProjectDetails = {
   id: number,
   description: string,
   name: string,
+  web_url: string
+};
+
+export type ProjectHookDetails = {
+  /** hook id for GET, project id for POST and PUT */
+  id: number,
+  /** used in PUT (edit) */
+  hook_id: number,
+  /** Returned in GET */
+  project_id: number,
+  url: string,
+  created_at?: string,
+  push_events?: boolean,
+  tag_push_events?: boolean,
+  merge_requests_events?: boolean,
+  repository_update_events?: boolean,
+  enable_ssl_verification?: boolean,
+  alert_status?: string,
+  disabled_until?: string,
+  issues_events?: boolean,
+  confidential_issues_events?: boolean,
+  note_events?: boolean,
+  confidential_note_events?: boolean,
+  pipeline_events?: boolean,
+  wiki_page_events?: boolean,
+  deployment_events?: boolean,
+  job_events?: boolean,
+  releases_events?: boolean,
+  push_events_branch_filter?: string,
+  emoji_events?: boolean
 };
