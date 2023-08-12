@@ -1,7 +1,5 @@
 import {ActionsBlock, Button, DividerBlock, KnownBlock, SectionBlock} from "@slack/bolt";
 import {PipelineEvent, UserInfo} from "./gitLabTypes";
-import util from 'util';
-
 
 export function generateApprovalCardBlocks(pipelineEvent: PipelineEvent, deploymentId: number, buildId: number, approvers: UserInfo[]): KnownBlock[] {
   let blocks: KnownBlock[] = [];

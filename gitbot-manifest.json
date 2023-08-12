@@ -23,7 +23,8 @@
     "scopes": {
       "bot": [
         "commands",
-        "chat:write"
+        "chat:write",
+        "chat:write.public"
       ]
     }
   },

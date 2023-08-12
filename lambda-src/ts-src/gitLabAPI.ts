@@ -1,6 +1,5 @@
 import axios from "axios";
-import util from 'util';
-import {DeploymentData, OIDCUserInfo, ProjectDetails, UserInfo} from "./gitLabTypes";
+import {DeploymentData, OIDCUserInfo, ProjectDetails, ProjectHookDetails, UserInfo} from "./gitLabTypes";
 
 /**
  * Gets the OIDC user info for the user who owns the token.
@@ -17,7 +16,7 @@ export async function getOIDCUserInfo(token: string) {
 
   const {data, status} = await axios.get<OIDCUserInfo>(url, config);
   if(status != 200) {
-    throw new Error("");
+    throw new Error("Error calling userinfo API");
   }
 
   return data;
@@ -37,7 +36,7 @@ export async function getUserInfo(token: string, gitLabUserId: number) {
 
   const {data, status} = await axios.get<UserInfo>(url, config);
   if(status != 200) {
-    throw new Error("");
+    throw new Error("Error calling users API");
   }
 
   return data;
@@ -55,7 +54,7 @@ export async function getDeployments(token: string, projectId: number) {
     const url = `https://gitlab.com/api/v4/projects/${projectId}/deployments?page=${page}`;
     const {data, status, headers} = await axios.get<DeploymentData[]>(url, config);
     if(status != 200) {
-      throw new Error("");
+      throw new Error("Error calling list deployments API");
     }
     allData = allData.concat(data);
     page = Number.parseInt(headers['x-next-page'] as string);
@@ -126,6 +125,13 @@ async function approveOrRejectDeployment(token: string, projectId: number, deplo
   }
 }
 
+/**
+ * Return the deployment data for the given deployment
+ * @param token Probably a bot token, but could be a user access_token
+ * @param projectId 
+ * @param deploymentId 
+ * @returns 
+ */
 export async function getDeployment(token: string, projectId: number, deploymentId: number) {
   const url = `https://gitlab.com/api/v4/projects/${projectId}/deployments/${deploymentId}`;
 
@@ -135,12 +141,18 @@ export async function getDeployment(token: string, projectId: number, deployment
 
   const {data, status} = await axios.get<DeploymentData>(url, config);
   if(status != 200) {
-    throw new Error("");
+    throw new Error("Error calling list project deployments API");
   }
 
   return data;
 }
 
+/**
+ * Play a job which has "manual" status
+ * @param token 
+ * @param projectId 
+ * @param buildId 
+ */
 export async function playJob(token: string, projectId: number, buildId: number) {
   const url = `https://gitlab.com/api/v4/projects/${projectId}/jobs/${buildId}/play`;
 
@@ -150,12 +162,18 @@ export async function playJob(token: string, projectId: number, buildId: number)
 
   const response = await axios.post(url, {}, config);
   if(response.status != 200) {
-    console.error("Error calling pipeline approval API:", response);
+    console.error("Error calling job play API:", response);
     throw new Error("Error calling job play API");
   }
 }
 
-export async function getProjectDetails(token: string, projectName: string) {
+/**
+ * Get the details for the project with given name
+ * @param token 
+ * @param projectName 
+ * @returns Array of ProjectDetails
+ */
+export async function getProjectDetailsByName(token: string, projectName: string) {
   const config = {
     headers: {Authorization: `Bearer ${token}`}
   };
@@ -169,7 +187,7 @@ export async function getProjectDetails(token: string, projectName: string) {
     const url = `https://gitlab.com/api/v4/projects/?search=${searchParam}&page=${page}`;
     const {data, status, headers} = await axios.get<ProjectDetails[]>(url, config);
     if(status != 200) {
-      throw new Error("");
+      throw new Error("Error calling get project details API");
     }
     const matchingNameProjects = data.filter(projectDetails => {
       return projectDetails.name === projectName;
@@ -180,4 +198,87 @@ export async function getProjectDetails(token: string, projectName: string) {
   }
 
   return allData;
+}
+
+export async function getProjectDetailsById(token: string, projectId: number) {
+  const url = `https://gitlab.com/api/v4/projects/${projectId}`;
+
+  const config = {
+    headers: {Authorization: `Bearer ${token}`}
+  };
+
+  const {data, status} = await axios.get<ProjectDetails>(url, config);
+  if(status != 200) {
+    throw new Error("Error calling get project details API");
+  }
+
+  return data;
+}
+
+/**
+ * Retreive all the current hook data for the given project
+ * @param token 
+ * @param projectId 
+ * @returns Array of ProjectHookDetails
+ */
+export async function listProjectHooks(token: string, projectId: number) {
+  const config = {
+    headers: {Authorization: `Bearer ${token}`}
+  };
+  let allData: ProjectHookDetails[] = [];
+  // The deployment API returns paginated data so we have to handle that.
+  let page = 1;
+  while(page) {
+    const url = `https://gitlab.com/api/v4/projects/${projectId}/hooks?page=${page}`;
+    const {data, status, headers} = await axios.get<ProjectHookDetails[]>(url, config);
+    if(status != 200) {
+      throw new Error("Error calling list project hooks API");
+    }
+    allData = allData.concat(data);
+
+    page = Number.parseInt(headers['x-next-page'] as string);
+  }
+
+  return allData;
+}
+
+/**
+ * Add a new hook to the given project
+ * @param token 
+ * @param projectId 
+ * @param projectHookDetails 
+ */
+export async function createProjectHook(token: string, projectId: number, projectHookDetails: ProjectHookDetails) {
+  const url = `https://gitlab.com/api/v4/projects/${projectId}/hooks`;
+
+  const config = {
+    headers: {Authorization: `Bearer ${token}`}
+  };
+
+  const response = await axios.post(url, projectHookDetails, config);
+  if(response.status != 201) {
+    console.error("Error calling create project hook API:", response);
+    throw new Error("Error calling create project hook API");
+  }
+}
+
+/**
+ * Edit an existing hook for the given project
+ * @param token 
+ * @param projectId 
+ * @param hookId 
+ * @param projectHookDetails 
+ */
+export async function editProjectHook(token: string, projectId: number, hookId: number, projectHookDetails: ProjectHookDetails) {
+  const url = `https://gitlab.com/api/v4/projects/${projectId}/hooks/${hookId}`;
+
+  const config = {
+    headers: {Authorization: `Bearer ${token}`}
+  };
+
+  const response = await axios.put(url, projectHookDetails, config);
+  if(response.status != 200) {
+    console.error("Error calling edit project hook API:", response);
+    throw new Error("Error calling edit project hook API");
+  }
 }

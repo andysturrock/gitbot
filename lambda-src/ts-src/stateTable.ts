@@ -1,6 +1,5 @@
 
 import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, DeleteItemCommand, DeleteItemCommandInput} from '@aws-sdk/client-dynamodb';
-import util from 'util';
 
 // The very useful TTL functionality in DynamoDB means we
 // can set a TTL on storing the refresh token.
