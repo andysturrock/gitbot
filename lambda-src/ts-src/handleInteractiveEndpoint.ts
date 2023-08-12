@@ -9,7 +9,7 @@ import {InteractionPayload} from './slackTypes';
  * @param event the event from Slack containing the interaction payload
  * @returns HTTP 200 back to Slack immediately to indicate the interaction payload has been received.
  */
-async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+export async function handleInteractiveEndpoint(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
     if(!event.body) {
       throw new Error("Missing event body");
@@ -22,7 +22,6 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     // so remove the bit outside the JSON
     body = body.replace('payload=', '');
     const payload = JSON.parse(body) as InteractionPayload;
-    console.log(`payload: ${util.inspect(payload)}`);
 
     // TODO assume we only get one Action for now
     if(payload.actions[0].action_id == "approvePipelineButton" || payload.actions[0].action_id == "rejectPipelineButton") {
@@ -33,7 +32,7 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
 
       const lambdaClient = new LambdaClient(configuration);
       const input: InvokeCommandInput = {
-        FunctionName: 'gitbot-handlePipelineApprovalLambda',
+        FunctionName: 'gitbot-handlePipelineApproval',
         InvocationType: InvocationType.Event,
         Payload: new TextEncoder().encode(JSON.stringify(payload))
       };
@@ -70,5 +69,3 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     return result;
   }
 }
-
-export {lambdaHandler};

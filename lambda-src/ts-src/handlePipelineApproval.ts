@@ -24,10 +24,8 @@ async function getNewAccessToken(slackUserId: string) {
  * @param payload the original interaction payload from Slack
  * @returns void but posts the login message to Slack in response to the slash command.
  */
-async function lambdaHandler(payload: InteractionPayload): Promise<void> {
+export async function handlePipelineApproval(payload: InteractionPayload): Promise<void> {
   try {
-    console.log(`payload: ${util.inspect(payload)}`);
-
     type ActionValue = {
       action: "approve" | "reject",
       project_id: number,
@@ -36,7 +34,6 @@ async function lambdaHandler(payload: InteractionPayload): Promise<void> {
     };
     // TODO assume we only get one Action for now
     const actionValue = JSON.parse(payload.actions[0].value) as ActionValue;
-    console.log(`actions: ${util.inspect(actionValue)}`);
     
     const accessToken = await getNewAccessToken(payload.user.id);
     if(actionValue.action == "approve") {
@@ -52,5 +49,3 @@ async function lambdaHandler(payload: InteractionPayload): Promise<void> {
     console.error(`Caught error: ${util.inspect(error)}`);
   }
 }
-
-export {lambdaHandler};

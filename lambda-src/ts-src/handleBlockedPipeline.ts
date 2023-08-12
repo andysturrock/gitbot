@@ -8,10 +8,8 @@ import {getDeployment, getDeploymentsWithDeployableId, getUserInfo} from './gitL
 import {PipelineEvent} from './gitLabTypes';
 import {generateApprovalCardBlocks} from './generateApprovalCardBlocks';
 
-export async function lambdaHandler(pipelineEvent: PipelineEvent): Promise<void> {
+export async function handleBlockedPipeline(pipelineEvent: PipelineEvent): Promise<void> {
   try {
-    console.log(`handleBlockedPipeline event: ${util.inspect(pipelineEvent)}`);
-
     const slackBotToken = process.env.SLACK_BOT_TOKEN;
     if(!slackBotToken) {
       throw new Error("Missing env var SLACK_BOT_TOKEN");
@@ -38,22 +36,22 @@ export async function lambdaHandler(pipelineEvent: PipelineEvent): Promise<void>
         token: slackBotToken,
         signingSecret
       });
-      // TODO need to add a command to add the project/pipeline notifications to a channel.
-      const channelId = process.env.CHANNEL_ID!;
+
       const deployments = await getDeploymentsWithDeployableId(gitLabBotToken, pipelineEvent.project.id, buildId);
 
       // Send error message to Slack if we don't get exactly one result.
       if(deployments.length == 0) {
+        console.error(`Could not find a deployment with deployable id ${buildId}`);
         const chatPostMessageArguments = {
-          channel: channelId,
+          channel: pipelineEvent.project.slack_channel_id,
           text: `Could not find a deployment for blocked pipeine in project ${pipelineEvent.project.name}.  Please use GitLab web UI to approve.`
         };
         await app.client.chat.postMessage(chatPostMessageArguments);
-        console.log(`Could not find a deployment with deployable id ${buildId}`);
         return;
       } else if(deployments.length > 1) {
+        console.error(`Found multiple blocked deployments for project ${pipelineEvent.project.name}`);
         const chatPostMessageArguments = {
-          channel: channelId,
+          channel: pipelineEvent.project.slack_channel_id,
           text: `Found multiple blocked deployments for project ${pipelineEvent.project.name}.  Please use GitLab web UI to approve.`
         };
         await app.client.chat.postMessage(chatPostMessageArguments);
@@ -61,7 +59,7 @@ export async function lambdaHandler(pipelineEvent: PipelineEvent): Promise<void>
       }
       // Find the approvers from the deployment data
       const deployment = await getDeployment(gitLabBotToken, pipelineEvent.project.id, deployments[0].id);
-      console.log(`approval summary: ${util.inspect(deployment.approval_summary)}`);
+      //TODO deal with different types of rules.
       const rules = deployment.approval_summary.rules;
       const approvers = await Promise.all(rules.map(async rule => {
         return await getUserInfo(gitLabBotToken, rule.user_id);
@@ -73,11 +71,10 @@ export async function lambdaHandler(pipelineEvent: PipelineEvent): Promise<void>
       // That lambda then calls the APIs to approve the depoyment and restart the pipeline.
       const blocks = generateApprovalCardBlocks(pipelineEvent, deployment.id, pipelineEvent.builds[0].id, approvers);
       const chatPostMessageArguments: ChatPostMessageArguments = {
-        channel: channelId,
+        channel: pipelineEvent.project.slack_channel_id,
         blocks
       };
-      const result = await app.client.chat.postMessage(chatPostMessageArguments);
-      console.log(`result: ${util.inspect(result)}`);
+      await app.client.chat.postMessage(chatPostMessageArguments);
     }
   }
   catch (error) {

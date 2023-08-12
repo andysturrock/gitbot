@@ -23,8 +23,6 @@ type State = {
 async function getState(nonce: string) : Promise<State | undefined>  { 
   const ddbClient = new DynamoDBClient({});
 
-  console.log(`getState Looking for ${nonce}`);
-
   const params: QueryCommandInput = {
     TableName,
     KeyConditionExpression: "nonce = :nonce",
@@ -33,13 +31,9 @@ async function getState(nonce: string) : Promise<State | undefined>  {
     }
   };
   const data = await ddbClient.send(new QueryCommand(params));
-  console.log(`getState data: ${util.inspect(data)}`);
   const items = data.Items;
   if(items && items[0] && items[0].state.S) {
-    console.log(`getState Found ${items[0].state.S}`);
-    console.log(`getState Found ${util.inspect(items[0].state.S)}`);
     const state = JSON.parse(items[0].state.S) as State;
-    console.log(`getState state: ${util.inspect(state)}`);
     return state;
   }
   else {

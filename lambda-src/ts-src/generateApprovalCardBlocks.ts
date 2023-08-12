@@ -32,10 +32,8 @@ export function generateApprovalCardBlocks(pipelineEvent: PipelineEvent, deploym
         alt_text: userInfo.name
       }
     };
-    console.log(`section: ${util.inspect(section)}`);
     return section;
   });
-  console.log(`approverBlocks: ${util.inspect(approverBlocks)}`);
   blocks = blocks.concat(approverBlocks);
 
   const approveButton: Button = {
@@ -71,6 +69,5 @@ export function generateApprovalCardBlocks(pipelineEvent: PipelineEvent, deploym
   blocks.push(actionsBlock);
   blocks.push(dividerBlock);
   
-  console.log(`blocks: ${util.inspect(blocks)}`);
   return blocks;
 }

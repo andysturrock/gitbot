@@ -2,13 +2,14 @@ import * as util from 'util';
 import {SlashCommandPayload} from './slackTypes';
 import axios from 'axios';
 import {getProjectDetails} from './gitLabAPI';
+import {ProjectConfig, putProjectConfig} from './projectConfigTable';
 
 /**
  * Handle the project argument of the slash command.
  * @param slashCommandPayload the payload from the original slash command
  * @returns void but posts the login message to Slack in response to the slash command.
  */
-async function lambdaHandler(slashCommandPayload: SlashCommandPayload): Promise<void> {
+export async function handleProjectCommand(slashCommandPayload: SlashCommandPayload): Promise<void> {
   const gitLabBotToken = process.env.GITLAB_BOT_TOKEN;
   if(!gitLabBotToken) {
     throw new Error("Missing env var GITLAB_BOT_TOKEN");
@@ -16,8 +17,6 @@ async function lambdaHandler(slashCommandPayload: SlashCommandPayload): Promise<
 
   try {
     let projectId = -1;
-
-    console.log(`handleProject Payload: ${util.inspect(slashCommandPayload)}`);
     let text = `Usage: /gitbot project <id | name> connect`;
     if(slashCommandPayload.projectIdentifier) {
       projectId = parseInt(slashCommandPayload.projectIdentifier);
@@ -56,7 +55,12 @@ async function lambdaHandler(slashCommandPayload: SlashCommandPayload): Promise<
     }
 
     if(projectId != -1) {
-      //TODO connect the project
+      const projectConfig: ProjectConfig = {
+        project_id: projectId,
+        slack_channel_id: slashCommandPayload.channel_id
+      };
+      await putProjectConfig(projectId, projectConfig);
+      // TODO create webhook here
     }
   }
   catch (error) {
@@ -75,5 +79,3 @@ async function lambdaHandler(slashCommandPayload: SlashCommandPayload): Promise<
     await axios.post(slashCommandPayload.response_url, blocks);
   }
 }
-
-export {lambdaHandler};

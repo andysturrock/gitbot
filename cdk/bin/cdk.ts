@@ -12,6 +12,6 @@ new LambdaStack(app, 'GitBotLambdaStack', {
   env: {region: 'eu-west-2'},
   userDataTable: dynamoDBStack.userDataTable,
   stateTable: dynamoDBStack.stateTable,
-  pipelineConfigTable: dynamoDBStack.pipelineConfigTable
+  projectConfigTable: dynamoDBStack.projectConfigTable
 });
 

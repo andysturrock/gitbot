@@ -14,15 +14,13 @@ import {SlashCommandPayload} from './slackTypes';
  * @param event 
  * @returns HTTP 200 back to Slack immediately to indicate the slash command has been received.
  */
-async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
     if(!event.body) {
       throw new Error("Missing event body");
     }
 
     const body = querystring.parse(event.body) as unknown as SlashCommandPayload;
-
-    console.log(`body: ${util.inspect(body)}`);
 
     // Verify that this request really did come from Slack
     verifySlackRequest(event.headers, event.body);
@@ -71,7 +69,7 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
 
       const lambdaClient = new LambdaClient(configuration);
       const input: InvokeCommandInput = {
-        FunctionName: 'gitbot-handleLoginLambda',
+        FunctionName: 'gitbot-handleLoginCommand',
         InvocationType: InvocationType.Event,
         Payload: new TextEncoder().encode(JSON.stringify(body))
       };
@@ -92,7 +90,7 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
 
       const lambdaClient = new LambdaClient(configuration);
       const input: InvokeCommandInput = {
-        FunctionName: 'gitbot-handleProjectLambda',
+        FunctionName: 'gitbot-handleProjectCommand',
         InvocationType: InvocationType.Event,
         Payload: new TextEncoder().encode(JSON.stringify(body))
       };
@@ -128,5 +126,3 @@ async function lambdaHandler(event: APIGatewayProxyEvent): Promise<APIGatewayPro
     return result;
   }
 }
-
-export {lambdaHandler};
