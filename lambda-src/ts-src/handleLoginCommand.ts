@@ -1,6 +1,6 @@
 import * as util from 'util';
 import crypto from 'crypto';
-import {putState} from './stateTable';
+import {State, putState} from './stateTable';
 import axios from 'axios';
 import {SlashCommandPayload} from './slackTypes';
 
@@ -31,9 +31,10 @@ export async function handleLoginCommand(slashCommandPayload: SlashCommandPayloa
     
     // Using a nonce for the state mitigates CSRF attacks.
     const nonce = crypto.randomBytes(16).toString('hex');
-    const state = {
+    const state: State = {
       nonce,
-      slack_user_id: slashCommandPayload.user_id
+      slack_user_id: slashCommandPayload.user_id,
+      response_url: slashCommandPayload.response_url
     };
 
     await putState(nonce, JSON.stringify(state));
@@ -60,7 +61,9 @@ export async function handleLoginCommand(slashCommandPayload: SlashCommandPayloa
                 type: "plain_text",
                 text: "Sign in to GitLab"
               },
-              url
+              url,
+              style: "primary",
+              action_id: 'gitLabSignInButton'
             }
           ]
         }

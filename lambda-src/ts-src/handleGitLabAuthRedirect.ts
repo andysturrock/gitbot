@@ -1,12 +1,11 @@
-import * as util from 'util';
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import axios, {AxiosRequestConfig} from 'axios';
 import {UserData, putUserData} from './userDataTable';
 import {deleteState, getState} from './stateTable';
 import {getOIDCUserInfo} from './gitLabAPI';
+import {postMarkdownAsBlocks} from './slackAPI';
 
 export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-
   try {
     type QueryStringParameters = {
       code: string,
@@ -68,13 +67,18 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
     };
     await putUserData(userData);
 
+    // Tell the user via Slack the login worked...
+    const successText = "You are now authenticated with GitLab.  You can now use other /gitbot slash commands.";
+    await postMarkdownAsBlocks(state.response_url, successText);
+
+    // And same again in the browser.
     const html = `
 <!DOCTYPE html>
 <html>
 <body>
 
 <h1>Authentication Success</h1>
-<p>You are now authenticated with GitLab.  You can now use other /gitbot slash commands.</p>
+<p>${successText}</p>
 
 </body>
 </html>
@@ -90,7 +94,7 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
     return result;
   }
   catch (error) {
-    console.error(`Caught error: ${util.inspect(error)}`);
+    console.error(error);
 
     const html = `
 <!DOCTYPE html>
