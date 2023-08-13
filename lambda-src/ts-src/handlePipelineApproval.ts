@@ -43,7 +43,7 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
       await approveDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
       const playing = await playJob(accessToken, actionValue.project_id, actionValue.build_id);
       if(playing) {
-        await postMarkdownAsBlocks(payload.response_url, "Approval succeeded, pipeline job now running.");
+        await postMarkdownAsBlocks(payload.response_url, "Approval succeeded, pipeline job now running.", true);
       }
       else {
         await postMarkdownAsBlocks(payload.response_url, "Approval succeeded but more still needed before pipeline job can run.");

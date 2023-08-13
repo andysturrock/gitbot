@@ -3,6 +3,7 @@ import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import {InvocationType, InvokeCommand, InvokeCommandInput, LambdaClient, LambdaClientConfig} from "@aws-sdk/client-lambda";
 import {verifySlackRequest} from './verifySlackRequest';
 import {InteractionPayload} from './slackTypes';
+import axios from 'axios';
 
 /**
  * Handle the interaction posts from Slack.
@@ -42,6 +43,10 @@ export async function handleInteractiveEndpoint(event: APIGatewayProxyEvent): Pr
       if(output.StatusCode != 202) {
         throw new Error(`Failed to invoke gitbot-handlePipelineApprovalLambda - error:${util.inspect(output.FunctionError)}`);
       }
+    }
+    else if(payload.actions[0].action_id == "gitLabSignInButton") {
+      // Delete the original login card as it can't be used again without appearing like a CSRF replay attack.
+      await axios.post(payload.response_url, {delete_original: "true"});
     }
     else 
     {

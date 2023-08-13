@@ -11,7 +11,8 @@ const TableName = "State";
 
 export type State = {
   nonce: string,
-  slack_user_id: string
+  slack_user_id: string,
+  response_url: string
 };
 
 /**
