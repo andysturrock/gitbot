@@ -3,7 +3,8 @@ import {InteractionPayload} from './slackTypes';
 import {approveDeployment, playJob, rejectDeployment} from './gitLabAPI';
 import {getUserDataBySlackUserId, putUserData} from './userDataTable';
 import {refreshToken} from './refreshToken';
-import {postMarkdownAsBlocks} from './slackAPI';
+import {postMarkdownAsBlocks, postMarkdownAsBlocksToUrl} from './slackAPI';
+import {App} from '@slack/bolt';
 
 async function getGitLabAccessToken(slackUserId: string) {
   const userData = await getUserDataBySlackUserId(slackUserId);
@@ -23,7 +24,23 @@ async function getGitLabAccessToken(slackUserId: string) {
  * @returns void
  */
 export async function handlePipelineApproval(payload: InteractionPayload): Promise<void> {
+  const slackBotToken = process.env.SLACK_BOT_TOKEN;
+  if(!slackBotToken) {
+    throw new Error("Missing env var SLACK_BOT_TOKEN");
+  }
+  const signingSecret = process.env.SLACK_SIGNING_SECRET;
+  if(!signingSecret) {
+    throw new Error("Missing env var SLACK_SIGNING_SECRET");
+  }
+
   try {
+    // We can't reply to the response_url here because it will always replace the original message.
+    // So have to use the SDK to post messages to the channel directly.
+    const app = new App({
+      token: slackBotToken,
+      signingSecret
+    });
+
     type ActionValue = {
       action: "approve" | "reject",
       project_id: number,
@@ -35,7 +52,8 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
     
     const accessToken = await getGitLabAccessToken(payload.user.id);
     if(!accessToken) {
-      await postMarkdownAsBlocks(payload.response_url, "Please log in (using `/gitbot login`) and then try again.");
+      // Ephemeral, not replacing original approval card
+      await postMarkdownAsBlocks(app, payload.channel.id, "Please log in (using `/gitbot login`) and then try again.", "Login required", payload.user.id);
       return;
     }
 
@@ -43,19 +61,25 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
       await approveDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
       const playing = await playJob(accessToken, actionValue.project_id, actionValue.build_id);
       if(playing) {
-        await postMarkdownAsBlocks(payload.response_url, "Approval succeeded, pipeline job now running.", true);
+        // Fine to replace original
+        await postMarkdownAsBlocksToUrl(payload.response_url, "Approval succeeded, pipeline job now running.", "Pipeline job approved", true);
       }
       else {
-        await postMarkdownAsBlocks(payload.response_url, "Approval succeeded but more still needed before pipeline job can run.");
+        // Ephemeral, not replacing original approval card
+        await postMarkdownAsBlocks(app, payload.channel.id, `<@${payload.user.id}> approved but more approvals required before pipeline job can run.`,
+          "Pipeline job partially approved", payload.user.id);
       }
     }
     else 
     {
       await rejectDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
+      // Fine to replace original
+      await postMarkdownAsBlocksToUrl(payload.response_url, "Pipeline rejected", "Pipeline rejected", true);
     }
   }
   catch (error) {
-    // console.error(error);
-    await postMarkdownAsBlocks(payload.response_url, "Failed to approve pipeline.  Please use GitLab web UI.");
+    console.error(error);
+    // Fine to replace original
+    await postMarkdownAsBlocksToUrl(payload.response_url, "Failed to approve pipeline.  Please use GitLab web UI.", "Error approving pipeline job");
   }
 }

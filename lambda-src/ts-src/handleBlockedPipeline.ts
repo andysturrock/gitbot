@@ -7,6 +7,7 @@ import {ChatPostMessageArguments} from '@slack/web-api';
 import {getDeployment, getDeploymentsWithDeployableId, getUserInfo} from './gitLabAPI';
 import {PipelineEvent} from './gitLabTypes';
 import {generateApprovalCardBlocks} from './generateApprovalCardBlocks';
+import {postMarkdownAsBlocks} from './slackAPI';
 
 export async function handleBlockedPipeline(pipelineEvent: PipelineEvent): Promise<void> {
   try {
@@ -42,19 +43,15 @@ export async function handleBlockedPipeline(pipelineEvent: PipelineEvent): Promi
       // Send error message to Slack if we don't get exactly one result.
       if(deployments.length == 0) {
         console.error(`Could not find a deployment with deployable id ${buildId}`);
-        const chatPostMessageArguments = {
-          channel: pipelineEvent.project.slack_channel_id,
-          text: `Could not find a deployment for blocked pipeine in project ${pipelineEvent.project.name}.  Please use GitLab web UI to approve.`
-        };
-        await app.client.chat.postMessage(chatPostMessageArguments);
+        await postMarkdownAsBlocks(app, pipelineEvent.project.slack_channel_id,
+          `Could not find a deployment for blocked pipeine in project ${pipelineEvent.project.name}.  Please use GitLab web UI to approve.`,
+          "Error finding deployment for blocked pipeline");
         return;
       } else if(deployments.length > 1) {
         console.error(`Found multiple blocked deployments for project ${pipelineEvent.project.name}`);
-        const chatPostMessageArguments = {
-          channel: pipelineEvent.project.slack_channel_id,
-          text: `Found multiple blocked deployments for project ${pipelineEvent.project.name}.  Please use GitLab web UI to approve.`
-        };
-        await app.client.chat.postMessage(chatPostMessageArguments);
+        await postMarkdownAsBlocks(app, pipelineEvent.project.slack_channel_id,
+          `Found multiple blocked deployments for project ${pipelineEvent.project.name}.  Please use GitLab web UI to approve.`,
+          "Found multiple deployments for blocked pipeline");
         return;
       }
       // Find the approvers from the deployment data
@@ -72,7 +69,8 @@ export async function handleBlockedPipeline(pipelineEvent: PipelineEvent): Promi
       const blocks = generateApprovalCardBlocks(pipelineEvent, deployment.id, pipelineEvent.builds[0].id, approvers);
       const chatPostMessageArguments: ChatPostMessageArguments = {
         channel: pipelineEvent.project.slack_channel_id,
-        blocks
+        blocks,
+        text: "Pipeline approval required"
       };
       await app.client.chat.postMessage(chatPostMessageArguments);
     }

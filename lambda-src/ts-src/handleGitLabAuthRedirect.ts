@@ -3,7 +3,7 @@ import axios, {AxiosRequestConfig} from 'axios';
 import {UserData, putUserData} from './userDataTable';
 import {deleteState, getState} from './stateTable';
 import {getOIDCUserInfo} from './gitLabAPI';
-import {postMarkdownAsBlocks} from './slackAPI';
+import {postMarkdownAsBlocksToUrl} from './slackAPI';
 
 export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -69,7 +69,7 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
 
     // Tell the user via Slack the login worked...
     const successText = "You are now authenticated with GitLab.  You can now use other /gitbot slash commands.";
-    await postMarkdownAsBlocks(state.response_url, successText);
+    await postMarkdownAsBlocksToUrl(state.response_url, successText, "GitLab login successful");
 
     // And same again in the browser.
     const html = `
