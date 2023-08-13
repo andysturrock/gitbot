@@ -29,6 +29,12 @@ export type InteractionPayload = {
     name: string,
     team_id: string,
   },
+  container: {
+    type: string,
+    message_ts: string,
+    channel_id: string,
+    is_ephemeral: boolean
+  },
   team: {
     id: string,
     domain: string

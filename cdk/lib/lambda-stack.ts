@@ -70,6 +70,8 @@ export class LambdaStack extends Stack {
     handlePipelineApprovalLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
     handlePipelineApprovalLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
     handlePipelineApprovalLambda.addEnvironment('GITBOT_URL', gitbotUrl);
+    handlePipelineApprovalLambda.addEnvironment('SLACK_BOT_TOKEN', slackBotToken);
+    handlePipelineApprovalLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
 
     // Create the lambda for handling the slash command from Slack
     const handleSlashCommandLambda = new lambda.Function(this, "handleSlashCommandLambda", {
