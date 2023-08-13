@@ -1,5 +1,4 @@
 import axios from "axios";
-import util from 'util';
 
 export async function postMarkdownAsBlocks(response_url: string, text: string, replaceOriginal: boolean = false, inChannel: boolean = false) {
   type Block = {
@@ -31,6 +30,5 @@ export async function postMarkdownAsBlocks(response_url: string, text: string, r
     blocks.response_type = "in_channel";
   }
 
-  console.log(`********** blocks = ${util.inspect(blocks)}`);
   await axios.post(response_url, blocks);
 }

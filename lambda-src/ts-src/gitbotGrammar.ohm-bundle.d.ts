@@ -22,6 +22,7 @@ export interface GitbotArgsActionDict<T> extends BaseActionDict<T> {
   ProjectIdentifierExp?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   projectNamePartNoQuote?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
   projectNamePartQuote?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode, arg3: TerminalNode) => T;
+  StatusExp?: (this: NonterminalNode, arg0: TerminalNode) => T;
 }
 
 export interface GitbotArgsSemantics extends Semantics {

@@ -2,7 +2,7 @@
   "display_information": {
     "name": "gitbot",
     "description": "GitLab integration",
-    "background_color": "#3e5aad"
+    "background_color": "#614b79"
   },
   "features": {
     "bot_user": {
@@ -14,12 +14,15 @@
         "command": "/gitbot",
         "url": "https://gitbot.example.com/0_0_1/slash-command",
         "description": "GitLab Slack integration",
-        "usage_hint": "[login | help | project <id|name> connect]",
+        "usage_hint": "[login | help | status | project <id|name> connect]",
         "should_escape": true
       }
     ]
   },
   "oauth_config": {
+    "redirect_urls": [
+      "https://gitbot.example.com"
+    ],
     "scopes": {
       "bot": [
         "commands",

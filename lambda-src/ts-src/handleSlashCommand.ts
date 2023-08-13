@@ -32,7 +32,7 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `Usage: /gitbot [login | help | ? | project [help] | project <id|name> connect]`
+            text: `Usage: /gitbot [login | help | ? | status | project [help] | project <id|name> connect]`
           }
         }
       ]
@@ -82,7 +82,6 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
     }
     else if(gitbotOptions.projectIdentifier) {
       body.projectIdentifier = gitbotOptions.projectIdentifier;
-      body.projectHelp = gitbotOptions.projectHelp;
       // TODO get this from config
       const configuration: LambdaClientConfig = {
         region: 'eu-west-2'
@@ -113,6 +112,25 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
           }
         ]
       };
+    }
+    else if(gitbotOptions.status) {
+      // TODO get this from config
+      const configuration: LambdaClientConfig = {
+        region: 'eu-west-2'
+      };
+
+      const lambdaClient = new LambdaClient(configuration);
+      const input: InvokeCommandInput = {
+        FunctionName: 'gitbot-handleStatusCommand',
+        InvocationType: InvocationType.Event,
+        Payload: new TextEncoder().encode(JSON.stringify(body))
+      };
+
+      const command = new InvokeCommand(input);
+      const output = await lambdaClient.send(command);
+      if(output.StatusCode != 202) {
+        throw new Error(`Failed to invoke gitbot-handleStatusCommand - error:${util.inspect(output.FunctionError)}`);
+      }
     }
     else {
       blocks = usageBlocks;

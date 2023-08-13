@@ -74,6 +74,8 @@ export async function handleProjectCommand(slashCommandPayload: SlashCommandPayl
         await createProjectHook(gitLabBotToken, projectId, hook);
       }
 
+      // TODO currently only one channel per project.  In future might want different events in different channels.
+      // Eg MR notifications in one channel and build notifications in another.
       // Save the mapping between the project and the Slack channel id.
       const projectConfig: ProjectConfig = {
         project_id: projectId,

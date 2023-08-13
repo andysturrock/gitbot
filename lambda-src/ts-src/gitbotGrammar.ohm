@@ -1,5 +1,5 @@
 GitbotArgs {
-	Exp = EmptyExp | HelpExp | LoginExp | ProjectExp
+	Exp = EmptyExp | HelpExp | LoginExp | ProjectExp | StatusExp
 
   EmptyExp = end
     
@@ -15,5 +15,6 @@ GitbotArgs {
   ProjectIdentifierExp = projectNamePartNoQuote | projectNamePartQuote
   projectNamePartNoQuote = alnum (alnum|"-"|"_"|"'"|"?"|"!")*
   projectNamePartQuote = "\"" alnum (space|alnum|"-"|"_"|"'"|"?"|"!")* "\""
-    
+  
+  StatusExp = "status"
 }

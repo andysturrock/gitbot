@@ -1,5 +1,5 @@
 
-import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput} from '@aws-sdk/client-dynamodb';
+import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput} from '@aws-sdk/client-dynamodb';
 
 // The very useful TTL functionality in DynamoDB means we
 // can set a TTL on storing the refresh token.
@@ -67,6 +67,10 @@ export async function getUserDataBySlackUserId(slackUserId: string) {
   }
 }
 
+/**
+ * Put (ie add new or overwrite) userData
+ * @param userData the data to put
+ */
 export async function putUserData(userData: UserData) {
   const now = Date.now();
   const ttl = new Date(now + TTL_IN_MS);
@@ -84,4 +88,26 @@ export async function putUserData(userData: UserData) {
   const ddbClient = new DynamoDBClient({});
 
   await ddbClient.send(new PutItemCommand(putItemCommandInput));
+}
+
+export async function getUserData() { 
+  const ddbClient = new DynamoDBClient({});
+
+  const params: ScanCommandInput = {
+    TableName
+  };
+  const data = await ddbClient.send(new ScanCommand(params));
+  
+  const userData: UserData[] = [];
+  data.Items?.forEach(item => {
+    if(item.slack_user_id.S && item.gitlab_user_id.N && item.gitlab_refresh_token.S) {
+      userData.push({
+        gitlab_user_id: parseInt(item.gitlab_user_id.N),
+        slack_user_id: item.slack_user_id.S,
+        gitlab_refresh_token: item.gitlab_refresh_token.S
+      });
+    }
+  });
+
+  return userData;
 }
