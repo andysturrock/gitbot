@@ -3,7 +3,7 @@ import {InteractionPayload} from './slackTypes';
 import {approveDeployment, playJob, rejectDeployment} from './gitLabAPI';
 import {getUserDataBySlackUserId, putUserData} from './userDataTable';
 import {refreshToken} from './refreshToken';
-import {postMarkdownBlocks} from './slackAPI';
+import {postMarkdownAsBlocks} from './slackAPI';
 
 async function getGitLabAccessToken(slackUserId: string) {
   const userData = await getUserDataBySlackUserId(slackUserId);
@@ -35,7 +35,7 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
     
     const accessToken = await getGitLabAccessToken(payload.user.id);
     if(!accessToken) {
-      await postMarkdownBlocks(payload.response_url, "Please log in (using `/gitbot login`) and then try again.");
+      await postMarkdownAsBlocks(payload.response_url, "Please log in (using `/gitbot login`) and then try again.");
       return;
     }
 
@@ -43,10 +43,10 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
       await approveDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
       const playing = await playJob(accessToken, actionValue.project_id, actionValue.build_id);
       if(playing) {
-        await postMarkdownBlocks(payload.response_url, "Approval succeeded, pipeline job now running.");
+        await postMarkdownAsBlocks(payload.response_url, "Approval succeeded, pipeline job now running.");
       }
       else {
-        await postMarkdownBlocks(payload.response_url, "Approval succeeded but more still needed before pipeline job can run.");
+        await postMarkdownAsBlocks(payload.response_url, "Approval succeeded but more still needed before pipeline job can run.");
       }
     }
     else 
@@ -56,6 +56,6 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
   }
   catch (error) {
     // console.error(error);
-    await postMarkdownBlocks(payload.response_url, "Failed to approve pipeline.  Please use GitLab web UI.");
+    await postMarkdownAsBlocks(payload.response_url, "Failed to approve pipeline.  Please use GitLab web UI.");
   }
 }

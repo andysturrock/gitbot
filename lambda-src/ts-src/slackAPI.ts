@@ -1,9 +1,20 @@
 import axios from "axios";
-import * as util from 'util';
+import util from 'util';
 
-export async function postMarkdownBlocks(response_url: string, text: string, replaceOriginal: boolean = false) {
-  const blocks = {
-    replace_original: replaceOriginal,
+export async function postMarkdownAsBlocks(response_url: string, text: string, replaceOriginal: boolean = false, inChannel: boolean = false) {
+  type Block = {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: string
+    }
+  };
+  type Blocks = {
+    replace_original?: string,
+    response_type?: string,
+    blocks: Block[]
+  };
+  const blocks: Blocks = {
     blocks: [
       {
         type: "section",
@@ -14,8 +25,12 @@ export async function postMarkdownBlocks(response_url: string, text: string, rep
       }
     ]
   };
-  const result = await axios.post(response_url, blocks);
-  if(result.status !== 200) {
-    throw new Error(`Error ${util.inspect(result.statusText)} posting response: ${util.inspect(result.data)}`);
+
+  blocks.replace_original = String(replaceOriginal);
+  if(inChannel) {
+    blocks.response_type = "in_channel";
   }
+
+  console.log(`********** blocks = ${util.inspect(blocks)}`);
+  await axios.post(response_url, blocks);
 }

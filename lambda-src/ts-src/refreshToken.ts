@@ -45,10 +45,7 @@ export async function refreshToken(refreshToken: string) {
   };
   const url = 'https://gitlab.com/oauth/token';
 
-  const {data, status} = await axios.post<TokenResponse>(url, {}, config);
-  if(status !== 200) {
-    throw new Error(`Error ${status}`);
-  }
+  const {data} = await axios.post<TokenResponse>(url, {}, config);
 
   return data;
 }

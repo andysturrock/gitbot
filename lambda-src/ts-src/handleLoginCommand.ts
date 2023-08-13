@@ -67,10 +67,7 @@ export async function handleLoginCommand(slashCommandPayload: SlashCommandPayloa
       ]
     };
 
-    const result = await axios.post(slashCommandPayload.response_url, blocks);
-    if(result.status !== 200) {
-      throw new Error(`Error ${util.inspect(result.statusText)} posting response: ${util.inspect(result.data)}`);
-    }
+    await axios.post(slashCommandPayload.response_url, blocks);
   }
   catch (error) {
     console.error(`Caught error: ${util.inspect(error)}`);
