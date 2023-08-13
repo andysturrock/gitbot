@@ -101,6 +101,27 @@ export class LambdaStack extends Stack {
     handleProjectCommandLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
     handleProjectCommandLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
 
+    // Create the lambda for handling the status subcommand from the slash command.
+    // It is called from the handleSlashCommandLambda.
+    const handleStatusCommandLambda = new lambda.Function(this, "handleStatusCommandLambda", {
+      handler: "handleStatusCommand.handleStatusCommand",
+      functionName: 'gitbot-handleStatusCommand',
+      ...allLambdaProps
+    });
+    // This function is going to be invoked asynchronously, so set some extra config for that
+    new lambda.EventInvokeConfig(this, 'handleStatusCommandLambdaEventInvokeConfig', {
+      function: handleStatusCommandLambda,
+      maxEventAge: Duration.minutes(2),
+      retryAttempts: 2,
+    });
+    // Give the slash command lambda permission to invoke this one
+    handleStatusCommandLambda.grantInvoke(handleSlashCommandLambda);
+    // It acts as a bot with GitLab
+    handleStatusCommandLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+    // Allow access to the relevant DynamoDB tables
+    props.userDataTable.grantReadData(handleStatusCommandLambda);
+    props.projectConfigTable.grantReadData(handleStatusCommandLambda);
+
     // Create the lambda for handling the login subcommand from the slash command.
     // It is called from the handleSlashCommandLambda.
     const handleLoginCommandLambda = new lambda.Function(this, "handleLoginCommandLambda", {
@@ -123,6 +144,7 @@ export class LambdaStack extends Stack {
     handleLoginCommandLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
     handleLoginCommandLambda.addEnvironment('GITLAB_AUTHORIZE_URL', gitLabAuthorizeUrl);
     handleLoginCommandLambda.addEnvironment('GITLAB_SCOPES', gitLabScopes);
+    handleLoginCommandLambda.addEnvironment('GITBOT_URL', gitbotUrl);
 
     // Create the lambda for handling the project webhook events
     const handleProjectHookEventLambda = new lambda.Function(this, "handleProjectHookEventLambda", {
@@ -170,6 +192,7 @@ export class LambdaStack extends Stack {
     handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
     handleGitLabAuthRedirectLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
     handleGitLabAuthRedirectLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
+    handleGitLabAuthRedirectLambda.addEnvironment('GITBOT_URL', gitbotUrl);
     
     // Get hold of the hosted zone which has previously been created
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'R53Zone', {

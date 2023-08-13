@@ -102,7 +102,8 @@ export type ProjectDetails = {
   id: number,
   description: string,
   name: string,
-  web_url: string
+  web_url: string,
+  avatar_url: string
 };
 
 export type ProjectHookDetails = {

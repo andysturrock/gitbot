@@ -1,5 +1,5 @@
 
-import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput} from '@aws-sdk/client-dynamodb';
+import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput} from '@aws-sdk/client-dynamodb';
 
 const TableName = "ProjectConfig";
 
@@ -54,4 +54,26 @@ export async function putProjectConfig(projectId: number, projectConfig: Project
   const ddbClient = new DynamoDBClient({});
 
   await ddbClient.send(new PutItemCommand(putItemCommandInput));
+}
+
+/**
+ * Gets all the project config from the table
+ * @returns array of ProjectConfig items
+ */
+export async function getAllProjectConfig()  { 
+  const ddbClient = new DynamoDBClient({});
+
+  const params: ScanCommandInput = {
+    TableName
+  };
+  const data = await ddbClient.send(new ScanCommand(params));
+
+  const projectConfig: ProjectConfig[] = [];
+  data.Items?.forEach(item => {
+    if(item.config.S) {
+      projectConfig.push(JSON.parse(item.config.S) as ProjectConfig);
+    }
+  });
+
+  return projectConfig;
 }

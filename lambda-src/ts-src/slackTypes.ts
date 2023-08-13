@@ -12,8 +12,8 @@ export type SlashCommandPayload = {
   is_enterprise_install: string,
   response_url: string,
   trigger_id: string,
+  /** Not from Slack - added by handleSlashCommand */
   projectIdentifier?: string,
-  projectHelp?: boolean
 };
 
 export type Action = {

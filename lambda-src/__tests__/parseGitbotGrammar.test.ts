@@ -8,6 +8,7 @@ test(`no args`, () => {
   expect(gitbotOptions.help).toBeTruthy();
   expect(gitbotOptions.projectHelp).toBeUndefined();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`?`, () => {
@@ -17,6 +18,7 @@ test(`?`, () => {
   expect(gitbotOptions.help).toBeTruthy();
   expect(gitbotOptions.projectHelp).toBeUndefined();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`help`, () => {
@@ -26,6 +28,7 @@ test(`help`, () => {
   expect(gitbotOptions.help).toBeTruthy();
   expect(gitbotOptions.projectHelp).toBeUndefined();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`login`, () => {
@@ -35,6 +38,7 @@ test(`login`, () => {
   expect(gitbotOptions.help).toBeUndefined();
   expect(gitbotOptions.projectHelp).toBeUndefined();
   expect(gitbotOptions.login).toBeTruthy();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`project ?`, () => {
@@ -44,6 +48,7 @@ test(`project ?`, () => {
   expect(gitbotOptions.help).toBeUndefined();
   expect(gitbotOptions.projectHelp).toBeTruthy();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`project help`, () => {
@@ -53,6 +58,7 @@ test(`project help`, () => {
   expect(gitbotOptions.help).toBeUndefined();
   expect(gitbotOptions.projectHelp).toBeTruthy();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`project "quoted identifier" connect`, () => {
@@ -62,6 +68,7 @@ test(`project "quoted identifier" connect`, () => {
   expect(gitbotOptions.help).toBeUndefined();
   expect(gitbotOptions.projectHelp).toBeUndefined();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
 });
 
 test(`project unquoted_identifier connect`, () => {
@@ -71,4 +78,15 @@ test(`project unquoted_identifier connect`, () => {
   expect(gitbotOptions.help).toBeUndefined();
   expect(gitbotOptions.projectHelp).toBeUndefined();
   expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeUndefined();
+});
+
+test(`status`, () => {
+  const userInput = 'status';
+  const gitbotOptions = parseGitbotArgs(userInput);
+  expect(gitbotOptions.projectIdentifier).toBeUndefined();
+  expect(gitbotOptions.help).toBeUndefined();
+  expect(gitbotOptions.projectHelp).toBeUndefined();
+  expect(gitbotOptions.login).toBeUndefined();
+  expect(gitbotOptions.status).toBeTruthy();
 });

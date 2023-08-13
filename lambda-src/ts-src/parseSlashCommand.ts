@@ -9,7 +9,8 @@ export interface GitbotOptions {
   projectIdentifier?: string,
   help?: boolean,
   projectHelp?: boolean
-  login?: boolean
+  login?: boolean,
+  status?: boolean
 }
 
 /**
@@ -74,6 +75,11 @@ export function parseGitbotArgs(userInput: string): GitbotOptions {
       arg1.eval();
       arg2.eval();
       arg3.eval();
+      return gitBotOptions;
+    },
+    StatusExp(this: NonterminalNode, arg0: TerminalNode) {
+      arg0.eval();
+      gitBotOptions.status = true;
       return gitBotOptions;
     },
     _terminal(this: TerminalNode) {
