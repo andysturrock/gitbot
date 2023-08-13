@@ -14,10 +14,7 @@ export async function getOIDCUserInfo(token: string) {
     headers: {Authorization: `Bearer ${token}`}
   };
 
-  const {data, status} = await axios.get<OIDCUserInfo>(url, config);
-  if(status != 200) {
-    throw new Error("Error calling userinfo API");
-  }
+  const {data} = await axios.get<OIDCUserInfo>(url, config);
 
   return data;
 }
@@ -34,11 +31,7 @@ export async function getUserInfo(token: string, gitLabUserId: number) {
     headers: {Authorization: `Bearer ${token}`}
   };
 
-  const {data, status} = await axios.get<UserInfo>(url, config);
-  if(status != 200) {
-    throw new Error("Error calling users API");
-  }
-
+  const {data} = await axios.get<UserInfo>(url, config);
   return data;
 }
 
@@ -52,10 +45,7 @@ export async function getDeployments(token: string, projectId: number) {
   let page = 1;
   while(page) {
     const url = `https://gitlab.com/api/v4/projects/${projectId}/deployments?page=${page}`;
-    const {data, status, headers} = await axios.get<DeploymentData[]>(url, config);
-    if(status != 200) {
-      throw new Error("Error calling list deployments API");
-    }
+    const {data, headers} = await axios.get<DeploymentData[]>(url, config);
     allData = allData.concat(data);
     page = Number.parseInt(headers['x-next-page'] as string);
   }
@@ -118,11 +108,7 @@ async function approveOrRejectDeployment(token: string, projectId: number, deplo
     comment: string
   };
 
-  const response = await axios.post<ApprovalResponse>(url, data, config);
-  if(response.status != 201) { // Note status is 201 "created"
-    console.error("Error calling pipeline approval API:", response);
-    throw new Error("Error calling pipeline approval API");
-  }
+  await axios.post<ApprovalResponse>(url, data, config);
 }
 
 /**
@@ -139,10 +125,7 @@ export async function getDeployment(token: string, projectId: number, deployment
     headers: {Authorization: `Bearer ${token}`}
   };
 
-  const {data, status} = await axios.get<DeploymentData>(url, config);
-  if(status != 200) {
-    throw new Error("Error calling list project deployments API");
-  }
+  const {data} = await axios.get<DeploymentData>(url, config);
 
   return data;
 }
@@ -152,19 +135,31 @@ export async function getDeployment(token: string, projectId: number, deployment
  * @param token 
  * @param projectId 
  * @param buildId 
+ * @returns true if the pipeline is now playing, false if it can't be played
+ * @throws Error for any other reason
  */
 export async function playJob(token: string, projectId: number, buildId: number) {
   const url = `https://gitlab.com/api/v4/projects/${projectId}/jobs/${buildId}/play`;
 
   const config = {
-    headers: {Authorization: `Bearer ${token}`}
+    headers: {Authorization: `Bearer ${token}`},
+    // By default Axios throws for non 2xx.  We want to check for 400 below.
+    validateStatus: () => true,
   };
 
-  const response = await axios.post(url, {}, config);
-  if(response.status != 200) {
-    console.error("Error calling job play API:", response);
+  type PlayResponse = {
+    message: string
+  };
+
+  const {data, status} = await axios.post<PlayResponse>(url, {}, config);  
+  if(status == 400 && data.message == "400 Bad request - Unplayable Job") {
+    return false;
+  }
+  if(status != 200) {
+    console.error("Error calling job play API:", status, data);
     throw new Error("Error calling job play API");
   }
+  return true;
 }
 
 /**
@@ -185,10 +180,7 @@ export async function getProjectDetailsByName(token: string, projectName: string
   let page = 1;
   while(page) {
     const url = `https://gitlab.com/api/v4/projects/?search=${searchParam}&page=${page}`;
-    const {data, status, headers} = await axios.get<ProjectDetails[]>(url, config);
-    if(status != 200) {
-      throw new Error("Error calling get project details API");
-    }
+    const {data, headers} = await axios.get<ProjectDetails[]>(url, config);
     const matchingNameProjects = data.filter(projectDetails => {
       return projectDetails.name === projectName;
     });
@@ -207,10 +199,7 @@ export async function getProjectDetailsById(token: string, projectId: number) {
     headers: {Authorization: `Bearer ${token}`}
   };
 
-  const {data, status} = await axios.get<ProjectDetails>(url, config);
-  if(status != 200) {
-    throw new Error("Error calling get project details API");
-  }
+  const {data} = await axios.get<ProjectDetails>(url, config);
 
   return data;
 }
@@ -230,10 +219,7 @@ export async function listProjectHooks(token: string, projectId: number) {
   let page = 1;
   while(page) {
     const url = `https://gitlab.com/api/v4/projects/${projectId}/hooks?page=${page}`;
-    const {data, status, headers} = await axios.get<ProjectHookDetails[]>(url, config);
-    if(status != 200) {
-      throw new Error("Error calling list project hooks API");
-    }
+    const {data, headers} = await axios.get<ProjectHookDetails[]>(url, config);
     allData = allData.concat(data);
 
     page = Number.parseInt(headers['x-next-page'] as string);
@@ -255,11 +241,7 @@ export async function createProjectHook(token: string, projectId: number, projec
     headers: {Authorization: `Bearer ${token}`}
   };
 
-  const response = await axios.post(url, projectHookDetails, config);
-  if(response.status != 201) {
-    console.error("Error calling create project hook API:", response);
-    throw new Error("Error calling create project hook API");
-  }
+  await axios.post(url, projectHookDetails, config);
 }
 
 /**
@@ -276,9 +258,5 @@ export async function editProjectHook(token: string, projectId: number, hookId: 
     headers: {Authorization: `Bearer ${token}`}
   };
 
-  const response = await axios.put(url, projectHookDetails, config);
-  if(response.status != 200) {
-    console.error("Error calling edit project hook API:", response);
-    throw new Error("Error calling edit project hook API");
-  }
+  await axios.put(url, projectHookDetails, config);
 }

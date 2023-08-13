@@ -1,8 +1,9 @@
 import axios from "axios";
 import * as util from 'util';
 
-export async function postMarkdownBlocks(response_url: string, text: string) {
+export async function postMarkdownBlocks(response_url: string, text: string, replaceOriginal: boolean = false) {
   const blocks = {
+    replace_original: replaceOriginal,
     blocks: [
       {
         type: "section",

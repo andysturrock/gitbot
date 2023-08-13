@@ -12,7 +12,7 @@ export class DynamoDBStack extends Stack {
 
     this.userDataTable = new dynamodb.Table(this, 'UserDataTable', {
       tableName: "UserData",
-      partitionKey: {name: 'slack_id', type: dynamodb.AttributeType.STRING},
+      partitionKey: {name: 'slack_user_id', type: dynamodb.AttributeType.STRING},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiry',
       removalPolicy: RemovalPolicy.DESTROY
