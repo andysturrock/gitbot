@@ -55,10 +55,7 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
       created_at: number
      };
 
-    const {data, status} = await axios.post<PostResponse>(url, {}, config);
-    if(status !== 200) {
-      throw new Error(`Error ${status}`);
-    }
+    const {data} = await axios.post<PostResponse>(url, {}, config);
 
     // Get the GitLab user id for this user.  Could get this by decoding the token.
     // See https://docs.gitlab.com/ee/integration/openid_connect_provider.html

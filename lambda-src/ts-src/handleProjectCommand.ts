@@ -4,7 +4,7 @@ import axios from 'axios';
 import {createProjectHook, editProjectHook, getProjectDetailsById, getProjectDetailsByName, listProjectHooks} from './gitLabAPI';
 import {ProjectConfig, putProjectConfig} from './projectConfigTable';
 import {ProjectDetails, ProjectHookDetails} from './gitLabTypes';
-import {postMarkdownBlocks} from './slackAPI';
+import {postMarkdownAsBlocks} from './slackAPI';
 
 /**
  * Handle the project argument of the slash command.
@@ -29,25 +29,26 @@ export async function handleProjectCommand(slashCommandPayload: SlashCommandPayl
   try {   
     let projectDetails: ProjectDetails[];
     if(slashCommandPayload.projectIdentifier) {
-      const projectId = parseInt(slashCommandPayload.projectIdentifier);
+      let projectId = parseInt(slashCommandPayload.projectIdentifier);
       if(Number.isNaN(projectId)) {
         projectDetails = await getProjectDetailsByName(gitLabBotToken, slashCommandPayload.projectIdentifier);
         if(projectDetails.length == 0) {
           const text = `Can't find project with name "${slashCommandPayload.projectIdentifier}", please use project id instead`;
-          await postMarkdownBlocks(slashCommandPayload.response_url, text);
+          await postMarkdownAsBlocks(slashCommandPayload.response_url, text);
           return;
         }
         else if(projectDetails.length > 1) {
           const text = `Found more than one project with name "${slashCommandPayload.projectIdentifier}", please use project id instead`;
-          await postMarkdownBlocks(slashCommandPayload.response_url, text);
+          await postMarkdownAsBlocks(slashCommandPayload.response_url, text);
           return;
         }
+        projectId = projectDetails[0].id;
       }
       else {
         projectDetails = [await getProjectDetailsById(gitLabBotToken, projectId)];
       }
-      const text = `Connecting project <${projectDetails[0].web_url}|${projectDetails[0].name}>...`;
-      await postMarkdownBlocks(slashCommandPayload.response_url, text);
+      let text = `Connecting project <${projectDetails[0].web_url}|${projectDetails[0].name} (id ${projectId})>...`;
+      await postMarkdownAsBlocks(slashCommandPayload.response_url, text, true);
 
       const existingHooks = await listProjectHooks(gitLabBotToken, projectId);
       // Find any hooks that we have already created.
@@ -80,39 +81,16 @@ export async function handleProjectCommand(slashCommandPayload: SlashCommandPayl
       };
       await putProjectConfig(projectId, projectConfig);
 
-      const blocks = {
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `Project <${projectDetails[0].web_url}|${projectDetails[0].name}> successfully connected for blocked pipeline events.`
-            }
-          }
-        ]
-      };
-      const result = await axios.post(slashCommandPayload.response_url, blocks);
-      if(result.status !== 200) {
-        throw new Error(`Error ${util.inspect(result.statusText)} posting response: ${util.inspect(result.data)}`);
-      }  
+      text = `Project <${projectDetails[0].web_url}|${projectDetails[0].name} (id ${projectId}> successfully connected for blocked pipeline events.`;
+      await postMarkdownAsBlocks(slashCommandPayload.response_url, text, true, true);
     }
     else {
+      // We shouldn't have been called without the projectIdentifier being set.
       console.error("Logic error");
     }
   }
   catch (error) {
-    console.error(`Caught error: ${util.inspect(error)}`);
-    const blocks = {
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: "Error - check logs"
-          }
-        }
-      ]
-    };
-    await axios.post(slashCommandPayload.response_url, blocks);
+    console.error(error);
+    await postMarkdownAsBlocks(slashCommandPayload.response_url, "Error - check logs");
   }
 }
