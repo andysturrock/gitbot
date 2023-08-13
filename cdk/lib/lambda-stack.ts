@@ -17,37 +17,44 @@ export class LambdaStack extends Stack {
     const customDomainName = getEnv('CUSTOM_DOMAIN_NAME', false)!;
     const gitLabAppId = getEnv('GITLAB_APPID', false)!;
     const gitLabSecret = getEnv('GITLAB_SECRET', false)!;
-    const gitLabCallbackUrl = getEnv('GITLAB_CALLBACK_URL', false)!;
     const gitLabAuthorizeUrl = getEnv('GITLAB_AUTHORIZE_URL', false)!;
     const gitLabScopes = getEnv('GITLAB_SCOPES', false)!;
     const slackSigningSecret = getEnv('SLACK_SIGNING_SECRET', false)!;
     const slackBotToken = getEnv('SLACK_BOT_TOKEN', false)!;
     const gitLabBotToken = getEnv('GITLAB_BOT_TOKEN', false)!;
-    const gitlabApprovalsDomainName = `gitbot.${customDomainName}`;
+    const gitbotDomainName = `gitbot.${customDomainName}`;
     // Semantic versioning has dots as separators but this is invalid in a URL
     // so replace the dots with underscores first.
     const lambdaVersionIdForURL = lambdaVersion.replace(/\./g, '_');
+    const gitbotUrl = `https://${gitbotDomainName}/${lambdaVersionIdForURL}`;
+
+    // Common props for all lambdas, so define them once here.
+    const allLambdaProps = {
+      bundling: {minify: true, sourceMap: true},
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logRetention: logs.RetentionDays.THREE_DAYS,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: Duration.seconds(10),
+      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
+    };
 
     // Create the lambda for handling interactions.  This one dispatches to other lambdas depending on
     // which interactive component has been used and what that needs to do.
     const handleInteractiveEndpointLambda = new lambda.Function(this, "handleInteractiveEndpointLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handleInteractiveEndpoint.handleInteractiveEndpoint",
-      logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleInteractiveEndpoint'
+      functionName: 'gitbot-handleInteractiveEndpoint',
+      ...allLambdaProps
     });
     handleInteractiveEndpointLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
 
     // Create the lambda for handling the approval and restart of the pipeline.
     // It is called from the handleInteractiveEndpointLambda.
     const handlePipelineApprovalLambda = new lambda.Function(this, "handlePipelineApprovalLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handlePipelineApproval.handlePipelineApproval",
-      logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'gitbot-handlePipelineApproval',
-      timeout: Duration.seconds(10)
+      ...allLambdaProps
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
     new lambda.EventInvokeConfig(this, 'handlePipelineApprovalLambdaInvokeConfig', {
@@ -59,30 +66,25 @@ export class LambdaStack extends Stack {
     props.userDataTable.grantReadWriteData(handlePipelineApprovalLambda);
     // Give the interactive command handler lambda permission to invoke this one
     handlePipelineApprovalLambda.grantInvoke(handleInteractiveEndpointLambda);
-    // Env vars
+    // Envs vars
     handlePipelineApprovalLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
-    handlePipelineApprovalLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
     handlePipelineApprovalLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
+    handlePipelineApprovalLambda.addEnvironment('GITBOT_URL', gitbotUrl);
 
     // Create the lambda for handling the slash command from Slack
     const handleSlashCommandLambda = new lambda.Function(this, "handleSlashCommandLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handleSlashCommand.handleSlashCommand",
-      logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleSlashCommand'
+      functionName: 'gitbot-handleSlashCommand',
+      ...allLambdaProps
     });
     handleSlashCommandLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
 
     // Create the lambda for handling project subcommands from the slash command.
     // It is called from the handleSlashCommandLambda.
     const handleProjectCommandLambda = new lambda.Function(this, "handleProjectCommandLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handleProjectCommand.handleProjectCommand",
-      logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'gitbot-handleProjectCommand',
-      timeout: Duration.seconds(10)
+      ...allLambdaProps
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
     new lambda.EventInvokeConfig(this, 'handleProjectCommandLambdaEventInvokeConfig', {
@@ -102,11 +104,9 @@ export class LambdaStack extends Stack {
     // Create the lambda for handling the login subcommand from the slash command.
     // It is called from the handleSlashCommandLambda.
     const handleLoginCommandLambda = new lambda.Function(this, "handleLoginCommandLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handleLoginCommand.handleLoginCommand",
-      logRetention: logs.RetentionDays.THREE_DAYS,
-      functionName: 'gitbot-handleLoginCommand'
+      functionName: 'gitbot-handleLoginCommand',
+      ...allLambdaProps
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
     new lambda.EventInvokeConfig(this, 'handleLoginCommandLambdaEventInvokeConfig', {
@@ -119,18 +119,16 @@ export class LambdaStack extends Stack {
     // Allow access to the relevant DynamoDB table
     props.stateTable.grantReadWriteData(handleLoginCommandLambda);
     handleLoginCommandLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
-    handleLoginCommandLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
+    handleLoginCommandLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
+    handleLoginCommandLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
     handleLoginCommandLambda.addEnvironment('GITLAB_AUTHORIZE_URL', gitLabAuthorizeUrl);
     handleLoginCommandLambda.addEnvironment('GITLAB_SCOPES', gitLabScopes);
 
     // Create the lambda for handling the project webhook events
     const handleProjectHookEventLambda = new lambda.Function(this, "handleProjectHookEventLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handleProjectHookEvent.handleProjectHookEvent",
-      logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'gitbot-handleProjectHookEvent',
-      timeout: Duration.seconds(10)
+      ...allLambdaProps
     });
     // Allow access to the relevant DynamoDB tables
     props.projectConfigTable.grantReadData(handleProjectHookEventLambda);
@@ -139,12 +137,9 @@ export class LambdaStack extends Stack {
     // Create the lambda for handling pipeline events
     // It is called from the handleProjectHookEventLambda
     const handlePipelineEventLambda = new lambda.Function(this, "handlePipelineEventLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handlePipelineEvent.handlePipelineEvent",
-      logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'gitbot-handlePipelineEvent',
-      timeout: Duration.seconds(10)
+      ...allLambdaProps
     });
     // This function is going to be invoked asynchronously, so set some extra config for that
     new lambda.EventInvokeConfig(this, 'handlePipelineEventLambdaEventInvokeConfig', {
@@ -163,12 +158,9 @@ export class LambdaStack extends Stack {
     
     // Create the lambda for handling the GitLab auth redirect
     const handleGitLabAuthRedirectLambda = new lambda.Function(this, "handleGitLabAuthRedirectLambda", {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
       handler: "handleGitLabAuthRedirect.handleGitLabAuthRedirect",
-      logRetention: logs.RetentionDays.THREE_DAYS,
       functionName: 'gitbot-handleGitLabAuthRedirect',
-      timeout: Duration.seconds(10)
+      ...allLambdaProps
     });
     // Allow access to the relevant DynamoDB tables
     props.userDataTable.grantReadWriteData(handleGitLabAuthRedirectLambda);
@@ -176,7 +168,8 @@ export class LambdaStack extends Stack {
     // Add some env vars for getting GitLab tokens
     handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
     handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
-    handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_CALLBACK_URL', gitLabCallbackUrl);
+    handleGitLabAuthRedirectLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
+    handleGitLabAuthRedirectLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
     
     // Get hold of the hosted zone which has previously been created
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'R53Zone', {
@@ -188,14 +181,14 @@ export class LambdaStack extends Stack {
     // Usefully, this writes the DNS Validation CNAME records to the R53 zone,
     // which is great as normal Cloudformation doesn't do that.
     const acmCertificateForCustomDomain = new acm.DnsValidatedCertificate(this, 'CustomDomainCertificate', {
-      domainName: gitlabApprovalsDomainName,
+      domainName: gitbotDomainName,
       hostedZone: zone,
       validation: acm.CertificateValidation.fromDns(zone),
     });
 
     // Create the custom domain
     const customDomain = new apigateway.DomainName(this, 'CustomDomainName', {
-      domainName: gitlabApprovalsDomainName,
+      domainName: gitbotDomainName,
       certificate: acmCertificateForCustomDomain,
       endpointType: apigateway.EndpointType.REGIONAL,
       securityPolicy: apigateway.SecurityPolicy.TLS_1_2
@@ -247,7 +240,7 @@ export class LambdaStack extends Stack {
 
     // Create the R53 "A" record to map from the custom domain to the actual API URL
     new route53.ARecord(this, 'CustomDomainAliasRecord', {
-      recordName: gitlabApprovalsDomainName,
+      recordName: gitbotDomainName,
       zone: zone,
       target: route53.RecordTarget.fromAlias(new targets.ApiGatewayDomain(customDomain))
     });

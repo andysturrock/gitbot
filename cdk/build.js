@@ -19,6 +19,11 @@ async function main() {
     console.log(`adding ${jsFile}`);
     zip.addLocalFile(jsFile);
   });
+  const mapFiles = await glob('../lambda-src/dist/*.js.map');
+  mapFiles.forEach(mapFile => {
+    console.log(`adding ${mapFile}`);
+    zip.addLocalFile(mapFile);
+  });
   const node_modules = path.join(distDirPath, 'node_modules');
   console.log(`adding ${node_modules}`);
   zip.addLocalFolder(node_modules, "node_modules");

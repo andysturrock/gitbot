@@ -9,7 +9,7 @@ import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, Query
 const TTL_IN_MS = 1000 * 30; // 30 seconds
 const TableName = "State";
 
-type State = {
+export type State = {
   nonce: string,
   slack_user_id: string
 };
@@ -19,7 +19,7 @@ type State = {
  * @param nonce 
  * @returns state or undefined if no state exists for the nonce
  */
-async function getState(nonce: string) : Promise<State | undefined>  { 
+export async function getState(nonce: string) : Promise<State | undefined>  { 
   const ddbClient = new DynamoDBClient({});
 
   const params: QueryCommandInput = {
@@ -40,7 +40,7 @@ async function getState(nonce: string) : Promise<State | undefined>  {
   }
 }
 
-async function deleteState(nonce: string) {
+export async function deleteState(nonce: string) {
   const ddbClient = new DynamoDBClient({});
 
   const params: DeleteItemCommandInput = {
@@ -60,7 +60,7 @@ async function deleteState(nonce: string) {
  * @param nonce Key for the table
  * @param state JSON value
  */
-async function putState(nonce: string, state: string) {
+export async function putState(nonce: string, state: string) {
   const now = Date.now();
   const ttl = new Date(now + TTL_IN_MS);
 
@@ -77,5 +77,3 @@ async function putState(nonce: string, state: string) {
 
   await ddbClient.send(new PutItemCommand(putItemCommandInput));
 }
-
-export {getState, putState, deleteState, State};

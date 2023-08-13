@@ -11,96 +11,72 @@ import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, Query
 const TTL_IN_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days
 const TableName = "UserData";
 
-export async function getSlackUserId(gitLabUserId: string) { 
+export type UserData = {
+  gitlab_user_id: number,
+  slack_user_id: string,
+  gitlab_refresh_token: string
+};
+
+export async function getUserDataByGitLabUserId(gitLabUserId: number) { 
   const ddbClient = new DynamoDBClient({});
 
   const params: QueryCommandInput = {
     TableName,
-    KeyConditionExpression: "gitlab_id = :gitlab_id",
+    KeyConditionExpression: "gitlab_user_id = :gitlab_user_id",
     ExpressionAttributeValues: {
-      ":gitlab_id" : {"S" : gitLabUserId}
+      ":gitlab_user_id" : {"N" : gitLabUserId.toString()}
     }
   };
   const data = await ddbClient.send(new QueryCommand(params));
   const items = data.Items;
-  if(items && items[0] && items[0].slack_id.S) {
-    return items[0].slack_id.S;
+  if(items && items[0] && items[0].slack_id.S && items[0].gitlab_refresh_token.S) {
+    const userData: UserData = {
+      gitlab_user_id: gitLabUserId,
+      slack_user_id: items[0].slack_id.S,
+      gitlab_refresh_token: items[0].gitlab_refresh_token.S
+    };
+    return userData;
   }
   else {
     return undefined;
   }
 }
 
-export async function getTokenForGitLabUser(gitLabUserId: string) { 
+export async function getUserDataBySlackUserId(slackUserId: string) { 
   const ddbClient = new DynamoDBClient({});
 
   const params: QueryCommandInput = {
     TableName,
-    KeyConditionExpression: "gitlab_id = :gitlab_id",
+    KeyConditionExpression: "slack_user_id = :slack_user_id",
     ExpressionAttributeValues: {
-      ":gitlab_id" : {"S" : gitLabUserId}
+      ":slack_user_id" : {"S" : slackUserId}
     }
   };
   const data = await ddbClient.send(new QueryCommand(params));
   const items = data.Items;
-  if(items && items[0] && items[0].gitlab_token.S) {
-    return items[0].gitlab_token.S;
+  if(items && items[0] && items[0].gitlab_user_id.N && items[0].gitlab_refresh_token.S) {
+    const userData: UserData = {
+      gitlab_user_id: parseInt(items[0].gitlab_user_id.N),
+      slack_user_id: slackUserId,
+      gitlab_refresh_token: items[0].gitlab_refresh_token.S
+    };
+    return userData;
   }
   else {
     return undefined;
   }
 }
 
-export async function getGitLabTokenForSlackUser(slackUserId: string) { 
-  const ddbClient = new DynamoDBClient({});
-
-  const params: QueryCommandInput = {
-    TableName,
-    KeyConditionExpression: "slack_id = :slack_id",
-    ExpressionAttributeValues: {
-      ":slack_id" : {"S" : slackUserId}
-    }
-  };
-  const data = await ddbClient.send(new QueryCommand(params));
-  const items = data.Items;
-  if(items && items[0] && items[0].gitlab_token.S) {
-    return items[0].gitlab_token.S;
-  }
-  else {
-    return undefined;
-  }
-}
-
-export async function getGitLabUserId(slackUserId: string) { 
-  const ddbClient = new DynamoDBClient({});
-
-  const params: QueryCommandInput = {
-    TableName,
-    KeyConditionExpression: "slack_id = :slack_id",
-    ExpressionAttributeValues: {
-      ":slack_id" : {"S" : slackUserId}
-    }
-  };
-  const data = await ddbClient.send(new QueryCommand(params));
-  const items = data.Items;
-  if(items && items[0] && items[0].gitlab_id.N) {
-    return parseInt(items[0].gitlab_id.N);
-  }
-  else {
-    return undefined;
-  }
-}
-
-export async function saveToken(slackUserId: string, gitlabUserId: number, refreshToken: string) {
+export async function putUserData(userData: UserData) {
   const now = Date.now();
   const ttl = new Date(now + TTL_IN_MS);
 
   const putItemCommandInput: PutItemCommandInput = {
     TableName,
     Item: {
-      slack_id: {S: slackUserId},
-      gitlab_id: {N: gitlabUserId.toString()}, // numbers are actually stored as strings
-      gitlab_token: {S: refreshToken},
+      slack_user_id: {S: userData.slack_user_id},
+      gitlab_user_id: {N: userData.gitlab_user_id.toString()}, // numbers are actually stored as strings
+      gitlab_refresh_token: {S: userData.gitlab_refresh_token},
       expiry: {N: `${Math.floor(ttl.getTime() / 1000)}`}
     }
   };

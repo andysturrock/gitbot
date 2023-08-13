@@ -33,12 +33,12 @@ export async function handleProjectCommand(slashCommandPayload: SlashCommandPayl
       if(Number.isNaN(projectId)) {
         projectDetails = await getProjectDetailsByName(gitLabBotToken, slashCommandPayload.projectIdentifier);
         if(projectDetails.length == 0) {
-          const text = `Can't find project with name "${slashCommandPayload.projectIdentifier}, please use project id instead`;
+          const text = `Can't find project with name "${slashCommandPayload.projectIdentifier}", please use project id instead`;
           await postMarkdownBlocks(slashCommandPayload.response_url, text);
           return;
         }
         else if(projectDetails.length > 1) {
-          const text = `Found more than one project with name "${slashCommandPayload.projectIdentifier}, please use project id instead`;
+          const text = `Found more than one project with name "${slashCommandPayload.projectIdentifier}", please use project id instead`;
           await postMarkdownBlocks(slashCommandPayload.response_url, text);
           return;
         }

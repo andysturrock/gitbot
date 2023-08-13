@@ -19,11 +19,11 @@ export async function handleLoginCommand(slashCommandPayload: SlashCommandPayloa
     if(!clientId) {
       throw new Error("Missing env var GITLAB_APPID");
     }
-    let redirectUrl = process.env.GITLAB_CALLBACK_URL;
-    if(!redirectUrl) {
-      throw new Error("Missing env var GITLAB_CALLBACK_URL");
+    const gitbotUrl = process.env.GITBOT_URL;
+    if(!gitbotUrl) {
+      throw new Error("Missing env var GITBOT_URL");
     }
-    redirectUrl = encodeURIComponent(redirectUrl);
+    const redirect_uri = encodeURIComponent(`${gitbotUrl}/gitlab-oauth-redirect`);
     const scopes = process.env.GITLAB_SCOPES;
     if(!scopes) {
       throw new Error("Missing env var GITLAB_SCOPES");
@@ -38,7 +38,7 @@ export async function handleLoginCommand(slashCommandPayload: SlashCommandPayloa
 
     await putState(nonce, JSON.stringify(state));
 
-    const url = `${authorizeUrl}?client_id=${clientId}&redirect_uri=${redirectUrl}&response_type=code&state=${nonce}&scope=${scopes}`;
+    const url = `${authorizeUrl}?client_id=${clientId}&redirect_uri=${redirect_uri}&response_type=code&state=${nonce}&scope=${scopes}`;
     const blocks = {
       "blocks": [
         {

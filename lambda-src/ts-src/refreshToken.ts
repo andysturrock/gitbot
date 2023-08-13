@@ -28,10 +28,11 @@ export async function refreshToken(refreshToken: string) {
   if(!client_secret) {
     throw new Error("Missing env var GITLAB_SECRET");
   }
-  const redirect_uri = process.env.GITLAB_CALLBACK_URL;
-  if(!redirect_uri) {
-    throw new Error("Missing env var GITLAB_CALLBACK_URL");
+  const gitbotUrl = process.env.GITBOT_URL;
+  if(!gitbotUrl) {
+    throw new Error("Missing env var GITBOT_URL");
   }
+  const redirect_uri = `${gitbotUrl}/gitlab-oauth-redirect`;
 
   const config: AxiosRequestConfig = {
     params: {

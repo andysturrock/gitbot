@@ -1,7 +1,7 @@
 import * as util from 'util';
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import axios, {AxiosRequestConfig} from 'axios';
-import {saveToken} from './userDataTable';
+import {UserData, putUserData} from './userDataTable';
 import {deleteState, getState} from './stateTable';
 import {getOIDCUserInfo} from './gitLabAPI';
 
@@ -19,7 +19,7 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
     const nonce = queryStringParameters.state;
     const state = await getState(nonce);
     if(!state) {
-      throw new Error("Missing state.  Are you a cyber criminal?");
+      throw new Error("Missing state.  Are you a cyber criminal trying a CSRF replay attack?");
     }
     await deleteState(nonce);
     
@@ -31,10 +31,11 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
     if(!client_secret) {
       throw new Error("Missing env var GITLAB_SECRET");
     }
-    const redirect_uri = process.env.GITLAB_CALLBACK_URL;
-    if(!redirect_uri) {
-      throw new Error("Missing env var GITLAB_CALLBACK_URL");
+    const gitbotUrl = process.env.GITBOT_URL;
+    if(!gitbotUrl) {
+      throw new Error("Missing env var GITBOT_URL");
     }
+    const redirect_uri = `${gitbotUrl}/gitlab-oauth-redirect`;
 
     const config: AxiosRequestConfig = {
       params: {
@@ -63,7 +64,12 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
     // See https://docs.gitlab.com/ee/integration/openid_connect_provider.html
     const userInfo = await getOIDCUserInfo(data.access_token);
 
-    await saveToken(state.slack_user_id, userInfo.sub, data.refresh_token);
+    const userData: UserData = {
+      gitlab_user_id: userInfo.sub,
+      slack_user_id: state.slack_user_id,
+      gitlab_refresh_token: data.refresh_token
+    };
+    await putUserData(userData);
 
     const html = `
 <!DOCTYPE html>
@@ -95,8 +101,7 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
 <body>
 
 <h1>Authentication Failure</h1>
-<p>There was an error:</p>
-<p>${JSON.stringify(util.inspect(error))}</p>
+<p>There was an error.  Please check the logs.</p>
 
 </body>
 </html>
