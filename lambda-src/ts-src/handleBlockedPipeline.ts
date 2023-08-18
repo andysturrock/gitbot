@@ -4,8 +4,8 @@
 import * as util from 'util';
 import {App} from '@slack/bolt';
 import {ChatPostMessageArguments} from '@slack/web-api';
-import {getDeployment, getDeploymentsWithDeployableId, getUserInfo} from './gitLabAPI';
-import {PipelineEvent} from './gitLabTypes';
+import {getDeployment, getDeploymentsWithDeployableId, getGroupInfo, getUserInfo} from './gitLabAPI';
+import {GroupInfo, PipelineEvent, UserInfo} from './gitLabTypes';
 import {generateApprovalCardBlocks} from './generateApprovalCardBlocks';
 import {postMarkdownAsBlocks} from './slackAPI';
 
@@ -55,18 +55,23 @@ export async function handleBlockedPipeline(pipelineEvent: PipelineEvent): Promi
         return;
       }
       // Find the approvers from the deployment data
-      const deployment = await getDeployment(gitLabBotToken, pipelineEvent.project.id, deployments[0].id);
-      //TODO deal with different types of rules.
+      const deployment = await getDeployment(gitLabBotToken, pipelineEvent.project.id, deployments[0].id);    
       const rules = deployment.approval_summary.rules;
-      const approvers = await Promise.all(rules.map(async rule => {
-        return await getUserInfo(gitLabBotToken, rule.user_id);
+      const userApprovers: UserInfo[] = [];
+      const groupApprovers: GroupInfo[] = [];
+      await Promise.all(rules.map(async rule => {
+        if(rule.user_id) {
+          userApprovers.push(await getUserInfo(gitLabBotToken, rule.user_id));
+        } else if(rule.group_id) {
+          groupApprovers.push(await getGroupInfo(gitLabBotToken, rule.group_id));
+        }
       }));
 
       // Create a nice looking card with some info about the project, pipeline and the approvers.
       // It also contains Approve and Reject buttons.
       // The buttons make Slack call back to the handleInteractiveEndpoint lambda.
       // That lambda then calls the APIs to approve the depoyment and restart the pipeline.
-      const blocks = generateApprovalCardBlocks(pipelineEvent, deployment.id, pipelineEvent.builds[0].id, approvers);
+      const blocks = generateApprovalCardBlocks(pipelineEvent, deployment.id, pipelineEvent.builds[0].id, userApprovers, groupApprovers, deployment.approval_summary);
       const chatPostMessageArguments: ChatPostMessageArguments = {
         channel: pipelineEvent.project.slack_channel_id,
         blocks,
