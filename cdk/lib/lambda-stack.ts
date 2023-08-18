@@ -21,6 +21,8 @@ export class LambdaStack extends Stack {
     const gitLabScopes = getEnv('GITLAB_SCOPES', false)!;
     const slackSigningSecret = getEnv('SLACK_SIGNING_SECRET', false)!;
     const slackBotToken = getEnv('SLACK_BOT_TOKEN', false)!;
+    const slackClientId = getEnv('SLACK_CLIENT_ID', false)!;
+    const slackClientSecret = getEnv('SLACK_CLIENT_SECRET', false)!;
     const gitLabBotToken = getEnv('GITLAB_BOT_TOKEN', false)!;
     const gitbotDomainName = `gitbot.${customDomainName}`;
     // Semantic versioning has dots as separators but this is invalid in a URL
@@ -39,6 +41,16 @@ export class LambdaStack extends Stack {
       timeout: Duration.seconds(10),
       code: lambda.Code.fromAsset("../lambda-src/dist/lambda.zip"),
     };
+
+    // The lambda for handling the callback for the Slack install
+    const handleSlackAuthRedirectLambda = new lambda.Function(this, "handleSlackAuthRedirectLambda", {
+      handler: "handleSlackAuthRedirect.handleSlackAuthRedirect",
+      functionName: 'gitbot-handleSlackAuthRedirect',
+      ...allLambdaProps
+    });
+    handleSlackAuthRedirectLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
+    handleSlackAuthRedirectLambda.addEnvironment('SLACK_CLIENT_ID', slackClientId);
+    handleSlackAuthRedirectLambda.addEnvironment('SLACK_CLIENT_SECRET', slackClientSecret);
 
     // Create the lambda for handling interactions.  This one dispatches to other lambdas depending on
     // which interactive component has been used and what that needs to do.
@@ -241,6 +253,9 @@ export class LambdaStack extends Stack {
     });
 
     // Connect the API Gateway to the lambdas
+    const handleSlackAuthRedirectLambdaIntegration = new apigateway.LambdaIntegration(handleSlackAuthRedirectLambda, {
+      requestTemplates: {"application/json": '{ "statusCode": "200" }'}
+    });
     const handleProjectHookEventLambdaIntegration = new apigateway.LambdaIntegration(handleProjectHookEventLambda, {
       requestTemplates: {"application/json": '{ "statusCode": "200" }'}
     });
@@ -255,10 +270,12 @@ export class LambdaStack extends Stack {
     });
     const handleProjectHookEventResource = api.root.addResource('projecthook-event');
     const handleGitLabAuthRedirectResource = api.root.addResource('gitlab-oauth-redirect');
+    const handleSlackAuthRedirectResource = api.root.addResource('slack-oauth-redirect');
     const handleSlashCommandResource = api.root.addResource('slash-command');
     const handleInteractiveEndpointResource = api.root.addResource('interactive-endpoint');
     // And add the methods.
-    // TODO add authorizer lambda for the pipeline event lambda
+    // TODO add authorizer lambda for the pipeline event lambda if required
+    handleSlackAuthRedirectResource.addMethod("GET", handleSlackAuthRedirectLambdaIntegration);
     handleProjectHookEventResource.addMethod("POST", handleProjectHookEventLambdaIntegration);
     handleGitLabAuthRedirectResource.addMethod("GET", handleGitLabAuthRedirectLambdaIntegration);
     handleSlashCommandResource.addMethod("POST", handleSlashCommandLambdaIntegration);
