@@ -78,12 +78,20 @@ export type UserInfo = {
   web_url: string
 };
 
+export type GroupInfo = {
+    id: string,
+    name: string,
+    avatar_url: string,
+    web_url: string,
+};
+
 export type ApprovalSummary = {
   rules: [
     {
       id: number,
       user_id: number,
       group_id: number,
+      access_level_description: string,
       required_approvals: number,
       deployment_approvals: Approval[]
     }]

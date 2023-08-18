@@ -1,5 +1,5 @@
 import axios from "axios";
-import {DeploymentData, OIDCUserInfo, ProjectDetails, ProjectHookDetails, UserInfo} from "./gitLabTypes";
+import {DeploymentData, GroupInfo, OIDCUserInfo, ProjectDetails, ProjectHookDetails, UserInfo} from "./gitLabTypes";
 
 /**
  * Gets the OIDC user info for the user who owns the token.
@@ -35,6 +35,43 @@ export async function getUserInfo(token: string, gitLabUserId: number) {
   return data;
 }
 
+/**
+ * Get the publicly available data on a group.  Obviously not actually public for private GitLab instances.
+ * @param token 
+ * @param gitLabGroupId 
+ * @returns 
+ */
+export async function getGroupInfo(token: string, gitLabGroupId: number) {
+  const url = `https://gitlab.com/api/v4/groups/${gitLabGroupId}`;
+  const config = {
+    headers: {Authorization: `Bearer ${token}`}
+  };
+  const {data} = await axios.get<GroupInfo>(url, config);
+  return data;
+}
+
+export async function getGroupMembers(token: string, gitLabGroupId: number) {
+  const config = {
+    headers: {Authorization: `Bearer ${token}`}
+  };
+
+  let allData: UserInfo[] = [];
+  let page = 1;
+  while(page) {
+    const url = `https://gitlab.com/api/v4/groups/${gitLabGroupId}/members?page=${page}`;
+    const {data, headers} = await axios.get<UserInfo>(url, config);
+    allData = allData.concat(data);
+    page = Number.parseInt(headers['x-next-page'] as string);
+  }
+  return allData;
+}
+
+/**
+ * Get all the deployments for a project
+ * @param token access token or bot token
+ * @param projectId id of the project
+ * @returns all the deployments for a project
+ */
 export async function getDeployments(token: string, projectId: number) {
   const config = {
     headers: {Authorization: `Bearer ${token}`}
@@ -135,7 +172,7 @@ export async function getDeployment(token: string, projectId: number, deployment
  * @param token 
  * @param projectId 
  * @param buildId 
- * @returns true if the pipeline is now playing, false if it can't be played
+ * @returns true if the pipeline is now playing, false if it can't be played for a valid reason (eg not approved)
  * @throws Error for any other reason
  */
 export async function playJob(token: string, projectId: number, buildId: number) {
@@ -151,10 +188,20 @@ export async function playJob(token: string, projectId: number, buildId: number)
     message: string
   };
 
-  const {data, status} = await axios.post<PlayResponse>(url, {}, config);  
+  const {data, status} = await axios.post<PlayResponse>(url, {}, config);
+  // 403 means the protected environment hasn't been set up right.
+  // The bot user must be added to the protected environment deployers.
+  if(status == 403) {
+    const error = `Unauthorised (403) when calling job play API.  Has the bot user been added as a deployer?`;
+    console.error(error);
+    throw new Error(error);
+    
+  }
+  // 400 means the job can't be played yet
   if(status == 400 && data.message == "400 Bad request - Unplayable Job") {
     return false;
   }
+  // Some other error
   if(status != 200) {
     console.error("Error calling job play API:", status, data);
     throw new Error("Error calling job play API");

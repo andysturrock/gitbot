@@ -1,6 +1,4 @@
-import * as util from 'util';
 import {SlashCommandPayload} from './slackTypes';
-import axios from 'axios';
 import {createProjectHook, editProjectHook, getProjectDetailsById, getProjectDetailsByName, listProjectHooks} from './gitLabAPI';
 import {ProjectConfig, putProjectConfig} from './projectConfigTable';
 import {ProjectDetails, ProjectHookDetails} from './gitLabTypes';

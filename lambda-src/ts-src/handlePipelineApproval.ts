@@ -1,4 +1,3 @@
-import * as util from 'util';
 import {InteractionPayload} from './slackTypes';
 import {approveDeployment, playJob, rejectDeployment} from './gitLabAPI';
 import {getUserDataBySlackUserId, putUserData} from './userDataTable';
@@ -32,6 +31,10 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
   if(!signingSecret) {
     throw new Error("Missing env var SLACK_SIGNING_SECRET");
   }
+  const gitLabBotToken = process.env.GITLAB_BOT_TOKEN;
+  if(!gitLabBotToken) {
+    throw new Error("Missing env var GITLAB_BOT_TOKEN");
+  }
 
   try {
     // We can't reply to the response_url here because it will always replace the original message.
@@ -59,7 +62,8 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
 
     if(actionValue.action == "approve") {
       await approveDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
-      const playing = await playJob(accessToken, actionValue.project_id, actionValue.build_id);
+      // Play the pipeline as the bot.  The users may have permissions to approve, but not to play.
+      const playing = await playJob(gitLabBotToken, actionValue.project_id, actionValue.build_id);
       if(playing) {
         // Fine to replace original
         await postMarkdownAsBlocksToUrl(payload.response_url, "Approval succeeded, pipeline job now running.", "Pipeline job approved", true);
