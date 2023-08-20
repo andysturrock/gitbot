@@ -1,12 +1,12 @@
 {
   "display_information": {
-    "name": "gitbot",
+    "name": "GitBot",
     "description": "GitLab integration",
     "background_color": "#614b79"
   },
   "features": {
     "bot_user": {
-      "display_name": "gitbot",
+      "display_name": "GitBot",
       "always_online": true
     },
     "slash_commands": [
@@ -14,20 +14,20 @@
         "command": "/gitbot",
         "url": "https://gitbot.example.com/0_0_1/slash-command",
         "description": "GitLab Slack integration",
-        "usage_hint": "[login | help | status | project <id|name> connect]",
+        "usage_hint": "[login | help | ? | status | project [help] | project <id|name> connect]",
         "should_escape": true
       }
     ]
   },
   "oauth_config": {
     "redirect_urls": [
-      "https://gitbot.example.com"
+      "https://gitbot.example.com/0_0_1/slack-oauth-redirect"
     ],
     "scopes": {
       "bot": [
-        "commands",
         "chat:write",
-        "chat:write.public"
+        "chat:write.public",
+        "commands"
       ]
     }
   },
@@ -36,7 +36,7 @@
       "is_enabled": true,
       "request_url": "https://gitbot.example.com/0_0_1/interactive-endpoint"
     },
-    "org_deploy_enabled": false,
+    "org_deploy_enabled": true,
     "socket_mode_enabled": false,
     "token_rotation_enabled": false
   }

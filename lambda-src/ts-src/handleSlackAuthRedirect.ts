@@ -1,11 +1,9 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import axios, {AxiosRequestConfig} from "axios";
-import util from 'util';
 import {getSecretValue} from "./awsAPI";
 
 export async function handleSlackAuthRedirect(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    console.log(`handleSlackAuthRedirect got ${util.inspect(event)}`);
     type QueryStringParameters = {
       code: string,
       state: string // TODO use this to prevent CSRF attacks
@@ -45,7 +43,6 @@ export async function handleSlackAuthRedirect(event: APIGatewayProxyEvent): Prom
       is_enterprise_install: boolean
     };
     const {data} = await axios.post<SlackResponse>(url, {}, config);
-    console.log(`response.data: ${util.inspect(data)}`);
    
     const successText = `Successfully installed gitbot in workspace ${data.team.name}`;
     const html = `
