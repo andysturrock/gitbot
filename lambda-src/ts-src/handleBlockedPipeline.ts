@@ -8,21 +8,13 @@ import {getDeployment, getDeploymentsWithDeployableId, getGroupInfo, getUserInfo
 import {GroupInfo, PipelineEvent, UserInfo} from './gitLabTypes';
 import {generateApprovalCardBlocks} from './generateApprovalCardBlocks';
 import {postMarkdownAsBlocks} from './slackAPI';
+import {getSecretValue} from './awsAPI';
 
 export async function handleBlockedPipeline(pipelineEvent: PipelineEvent): Promise<void> {
   try {
-    const slackBotToken = process.env.SLACK_BOT_TOKEN;
-    if(!slackBotToken) {
-      throw new Error("Missing env var SLACK_BOT_TOKEN");
-    }
-    const signingSecret = process.env.SLACK_SIGNING_SECRET;
-    if(!signingSecret) {
-      throw new Error("Missing env var SLACK_SIGNING_SECRET");
-    }
-    const gitLabBotToken = process.env.GITLAB_BOT_TOKEN;
-    if(!gitLabBotToken) {
-      throw new Error("Missing env var GITLAB_BOT_TOKEN");
-    }
+    const slackBotToken = await getSecretValue('GitBot', 'slackBotToken');
+    const signingSecret = await getSecretValue('GitBot', 'slackSigningSecret');
+    const gitLabBotToken = await getSecretValue('GitBot', 'gitLabBotToken');
 
     // Builds are listed in reverse order (ie latest stage first) in the JSON.
     // TODO shouldn't rely on ordering as the JSON spec says it's an unordered set of key/value pairs.

@@ -8,6 +8,7 @@ import {verifySlackRequest} from './verifySlackRequest';
 import querystring from 'querystring';
 import {GitbotOptions, parseGitbotArgs} from './parseSlashCommand';
 import {SlashCommandPayload} from './slackTypes';
+import {getSecretValue} from './awsAPI';
 
 /**
  * Handle the slash command from Slack.  Dispatches to other lambdas depending on command arguments.
@@ -22,8 +23,10 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
 
     const body = querystring.parse(event.body) as unknown as SlashCommandPayload;
 
+    const signingSecret = await getSecretValue('GitBot', 'slackSigningSecret');
+
     // Verify that this request really did come from Slack
-    verifySlackRequest(event.headers, event.body);
+    verifySlackRequest(signingSecret, event.headers, event.body);
 
     // Response giving a usage message if we can't find anything else or fail to parse at all.
     const usageBlocks = {
@@ -38,7 +41,7 @@ export async function handleSlashCommand(event: APIGatewayProxyEvent): Promise<A
       ]
     };
 
-    let gitbotOptions: GitbotOptions = {    
+    let gitbotOptions: GitbotOptions = {
     };
     try {
       gitbotOptions = parseGitbotArgs(body.text);

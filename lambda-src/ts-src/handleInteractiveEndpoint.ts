@@ -4,6 +4,7 @@ import {InvocationType, InvokeCommand, InvokeCommandInput, LambdaClient, LambdaC
 import {verifySlackRequest} from './verifySlackRequest';
 import {InteractionPayload} from './slackTypes';
 import axios from 'axios';
+import {getSecretValue} from './awsAPI';
 
 /**
  * Handle the interaction posts from Slack.
@@ -15,8 +16,11 @@ export async function handleInteractiveEndpoint(event: APIGatewayProxyEvent): Pr
     if(!event.body) {
       throw new Error("Missing event body");
     }
+
+    const signingSecret = await getSecretValue('GitBot', 'slackSigningSecret');
+    
     // Verify that this request really did come from Slack
-    verifySlackRequest(event.headers, event.body);
+    verifySlackRequest(signingSecret, event.headers, event.body);
 
     let body = decodeURIComponent(event.body);
     // For some reason the body parses to "payload= {...}"

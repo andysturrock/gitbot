@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import {State, putState} from './stateTable';
 import axios from 'axios';
 import {SlashCommandPayload} from './slackTypes';
+import {getSecretValue} from './awsAPI';
 
 /**
  * Handle the login argument of the slash command.
@@ -11,23 +12,11 @@ import {SlashCommandPayload} from './slackTypes';
  */
 export async function handleLoginCommand(slashCommandPayload: SlashCommandPayload): Promise<void> {
   try {
-    const authorizeUrl = process.env.GITLAB_AUTHORIZE_URL;
-    if(!authorizeUrl) {
-      throw new Error("Missing env var GITLAB_AUTHORIZE_URL");
-    }
-    const clientId = process.env.GITLAB_APPID;
-    if(!clientId) {
-      throw new Error("Missing env var GITLAB_APPID");
-    }
-    const gitbotUrl = process.env.GITBOT_URL;
-    if(!gitbotUrl) {
-      throw new Error("Missing env var GITBOT_URL");
-    }
-    const redirect_uri = encodeURIComponent(`${gitbotUrl}/gitlab-oauth-redirect`);
-    const scopes = process.env.GITLAB_SCOPES;
-    if(!scopes) {
-      throw new Error("Missing env var GITLAB_SCOPES");
-    }
+    const gitLabAuthorizeUrl = await getSecretValue('GitBot', 'gitLabAuthorizeUrl');
+    const gitLabAppId = await getSecretValue('GitBot', 'gitLabAppId');
+    const gitBotUrl = await getSecretValue('GitBot', 'gitBotUrl');
+    const redirect_uri = encodeURIComponent(`${gitBotUrl}/gitlab-oauth-redirect`);
+    const gitLabScopes = await getSecretValue('GitBot', 'gitLabScopes');
     
     // Using a nonce for the state mitigates CSRF attacks.
     const nonce = crypto.randomBytes(16).toString('hex');
@@ -39,7 +28,7 @@ export async function handleLoginCommand(slashCommandPayload: SlashCommandPayloa
 
     await putState(nonce, JSON.stringify(state));
 
-    const url = `${authorizeUrl}?client_id=${clientId}&redirect_uri=${redirect_uri}&response_type=code&state=${nonce}&scope=${scopes}`;
+    const url = `${gitLabAuthorizeUrl}?client_id=${gitLabAppId}&redirect_uri=${redirect_uri}&response_type=code&state=${nonce}&scope=${gitLabScopes}`;
     const blocks = {
       "blocks": [
         {

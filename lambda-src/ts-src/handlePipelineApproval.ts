@@ -4,6 +4,7 @@ import {getUserDataBySlackUserId, putUserData} from './userDataTable';
 import {refreshToken} from './refreshToken';
 import {postMarkdownAsBlocks, postMarkdownAsBlocksToUrl} from './slackAPI';
 import {App} from '@slack/bolt';
+import {getSecretValue} from './awsAPI';
 
 async function getGitLabAccessToken(slackUserId: string) {
   const userData = await getUserDataBySlackUserId(slackUserId);
@@ -23,25 +24,16 @@ async function getGitLabAccessToken(slackUserId: string) {
  * @returns void
  */
 export async function handlePipelineApproval(payload: InteractionPayload): Promise<void> {
-  const slackBotToken = process.env.SLACK_BOT_TOKEN;
-  if(!slackBotToken) {
-    throw new Error("Missing env var SLACK_BOT_TOKEN");
-  }
-  const signingSecret = process.env.SLACK_SIGNING_SECRET;
-  if(!signingSecret) {
-    throw new Error("Missing env var SLACK_SIGNING_SECRET");
-  }
-  const gitLabBotToken = process.env.GITLAB_BOT_TOKEN;
-  if(!gitLabBotToken) {
-    throw new Error("Missing env var GITLAB_BOT_TOKEN");
-  }
+  const slackBotToken = await getSecretValue('GitBot', 'slackBotToken');
+  const slackSigningSecret = await getSecretValue('GitBot', 'slackSigningSecret');
+  const gitLabBotToken = await getSecretValue('GitBot', 'gitLabBotToken');
 
   try {
     // We can't reply to the response_url here because it will always replace the original message.
     // So have to use the SDK to post messages to the channel directly.
     const app = new App({
       token: slackBotToken,
-      signingSecret
+      signingSecret: slackSigningSecret
     });
 
     type ActionValue = {

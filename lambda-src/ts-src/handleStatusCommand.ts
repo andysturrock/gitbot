@@ -4,6 +4,7 @@ import {DividerBlock, KnownBlock, SectionBlock} from '@slack/bolt';
 import {getUserData} from './userDataTable';
 import {getProjectDetailsById, getUserInfo} from './gitLabAPI';
 import {getAllProjectConfig} from './projectConfigTable';
+import {getSecretValue} from './awsAPI';
 
 /**
  * Handle the status argument of the slash command.
@@ -12,10 +13,7 @@ import {getAllProjectConfig} from './projectConfigTable';
  */
 export async function handleStatusCommand(slashCommandPayload: SlashCommandPayload): Promise<void> {
   try {
-    const gitLabBotToken = process.env.GITLAB_BOT_TOKEN;
-    if(!gitLabBotToken) {
-      throw new Error("Missing env var GITLAB_BOT_TOKEN");
-    }
+    const gitLabBotToken = await getSecretValue('GitBot', 'gitLabBotToken');
    
     const blocks: KnownBlock[] = [];
     const dividerBlock: DividerBlock = {

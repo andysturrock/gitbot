@@ -15,20 +15,10 @@ export class LambdaStack extends Stack {
     const r53ZoneId = getEnv('R53_ZONE_ID', false)!;
     const lambdaVersion = getEnv('LAMBDA_VERSION', false)!;
     const customDomainName = getEnv('CUSTOM_DOMAIN_NAME', false)!;
-    const gitLabAppId = getEnv('GITLAB_APPID', false)!;
-    const gitLabSecret = getEnv('GITLAB_SECRET', false)!;
-    const gitLabAuthorizeUrl = getEnv('GITLAB_AUTHORIZE_URL', false)!;
-    const gitLabScopes = getEnv('GITLAB_SCOPES', false)!;
-    const slackSigningSecret = getEnv('SLACK_SIGNING_SECRET', false)!;
-    const slackBotToken = getEnv('SLACK_BOT_TOKEN', false)!;
-    const slackClientId = getEnv('SLACK_CLIENT_ID', false)!;
-    const slackClientSecret = getEnv('SLACK_CLIENT_SECRET', false)!;
-    const gitLabBotToken = getEnv('GITLAB_BOT_TOKEN', false)!;
     const gitbotDomainName = `gitbot.${customDomainName}`;
     // Semantic versioning has dots as separators but this is invalid in a URL
     // so replace the dots with underscores first.
     const lambdaVersionIdForURL = lambdaVersion.replace(/\./g, '_');
-    const gitbotUrl = `https://${gitbotDomainName}/${lambdaVersionIdForURL}`;
 
     // Common props for all lambdas, so define them once here.
     const allLambdaProps = {
@@ -48,9 +38,8 @@ export class LambdaStack extends Stack {
       functionName: 'gitbot-handleSlackAuthRedirect',
       ...allLambdaProps
     });
-    handleSlackAuthRedirectLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
-    handleSlackAuthRedirectLambda.addEnvironment('SLACK_CLIENT_ID', slackClientId);
-    handleSlackAuthRedirectLambda.addEnvironment('SLACK_CLIENT_SECRET', slackClientSecret);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleSlackAuthRedirectLambda);
 
     // Create the lambda for handling interactions.  This one dispatches to other lambdas depending on
     // which interactive component has been used and what that needs to do.
@@ -59,7 +48,8 @@ export class LambdaStack extends Stack {
       functionName: 'gitbot-handleInteractiveEndpoint',
       ...allLambdaProps
     });
-    handleInteractiveEndpointLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleInteractiveEndpointLambda);
 
     // Create the lambda for handling the approval and restart of the pipeline.
     // It is called from the handleInteractiveEndpointLambda.
@@ -78,13 +68,8 @@ export class LambdaStack extends Stack {
     props.userDataTable.grantReadWriteData(handlePipelineApprovalLambda);
     // Give the interactive command handler lambda permission to invoke this one
     handlePipelineApprovalLambda.grantInvoke(handleInteractiveEndpointLambda);
-    // Envs vars
-    handlePipelineApprovalLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
-    handlePipelineApprovalLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
-    handlePipelineApprovalLambda.addEnvironment('GITBOT_URL', gitbotUrl);
-    handlePipelineApprovalLambda.addEnvironment('SLACK_BOT_TOKEN', slackBotToken);
-    handlePipelineApprovalLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
-    handlePipelineApprovalLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handlePipelineApprovalLambda);
 
     // Create the lambda for handling the slash command from Slack
     const handleSlashCommandLambda = new lambda.Function(this, "handleSlashCommandLambda", {
@@ -92,7 +77,8 @@ export class LambdaStack extends Stack {
       functionName: 'gitbot-handleSlashCommand',
       ...allLambdaProps
     });
-    handleSlashCommandLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleSlashCommandLambda);
 
     // Create the lambda for handling project subcommands from the slash command.
     // It is called from the handleSlashCommandLambda.
@@ -111,10 +97,8 @@ export class LambdaStack extends Stack {
     handleProjectCommandLambda.grantInvoke(handleSlashCommandLambda);
     // Allow access to the relevant DynamoDB table
     props.projectConfigTable.grantReadWriteData(handleProjectCommandLambda);
-    // It makes some API calls as the bot user.
-    handleProjectCommandLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
-    handleProjectCommandLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
-    handleProjectCommandLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleProjectCommandLambda);
 
     // Create the lambda for handling the status subcommand from the slash command.
     // It is called from the handleSlashCommandLambda.
@@ -131,11 +115,11 @@ export class LambdaStack extends Stack {
     });
     // Give the slash command lambda permission to invoke this one
     handleStatusCommandLambda.grantInvoke(handleSlashCommandLambda);
-    // It acts as a bot with GitLab
-    handleStatusCommandLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
     // Allow access to the relevant DynamoDB tables
     props.userDataTable.grantReadData(handleStatusCommandLambda);
     props.projectConfigTable.grantReadData(handleStatusCommandLambda);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleStatusCommandLambda);
 
     // Create the lambda for handling the login subcommand from the slash command.
     // It is called from the handleSlashCommandLambda.
@@ -154,12 +138,8 @@ export class LambdaStack extends Stack {
     handleLoginCommandLambda.grantInvoke(handleSlashCommandLambda);
     // Allow access to the relevant DynamoDB table
     props.stateTable.grantReadWriteData(handleLoginCommandLambda);
-    handleLoginCommandLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
-    handleLoginCommandLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
-    handleLoginCommandLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
-    handleLoginCommandLambda.addEnvironment('GITLAB_AUTHORIZE_URL', gitLabAuthorizeUrl);
-    handleLoginCommandLambda.addEnvironment('GITLAB_SCOPES', gitLabScopes);
-    handleLoginCommandLambda.addEnvironment('GITBOT_URL', gitbotUrl);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleLoginCommandLambda);
 
     // Create the lambda for handling the project webhook events
     const handleProjectHookEventLambda = new lambda.Function(this, "handleProjectHookEventLambda", {
@@ -169,7 +149,8 @@ export class LambdaStack extends Stack {
     });
     // Allow access to the relevant DynamoDB tables
     props.projectConfigTable.grantReadData(handleProjectHookEventLambda);
-    handleProjectHookEventLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleProjectHookEventLambda);
 
     // Create the lambda for handling pipeline events
     // It is called from the handleProjectHookEventLambda
@@ -189,9 +170,8 @@ export class LambdaStack extends Stack {
     // Allow access to the relevant DynamoDB tables
     props.userDataTable.grantReadWriteData(handlePipelineEventLambda);
     props.projectConfigTable.grantReadData(handlePipelineEventLambda);
-    handlePipelineEventLambda.addEnvironment('SLACK_BOT_TOKEN', slackBotToken);
-    handlePipelineEventLambda.addEnvironment('SLACK_SIGNING_SECRET', slackSigningSecret);
-    handlePipelineEventLambda.addEnvironment('GITLAB_BOT_TOKEN', gitLabBotToken);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handlePipelineEventLambda);
     
     // Create the lambda for handling the GitLab auth redirect
     const handleGitLabAuthRedirectLambda = new lambda.Function(this, "handleGitLabAuthRedirectLambda", {
@@ -202,12 +182,8 @@ export class LambdaStack extends Stack {
     // Allow access to the relevant DynamoDB tables
     props.userDataTable.grantReadWriteData(handleGitLabAuthRedirectLambda);
     props.stateTable.grantReadWriteData(handleGitLabAuthRedirectLambda);
-    // Add some env vars for getting GitLab tokens
-    handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_APPID', gitLabAppId);
-    handleGitLabAuthRedirectLambda.addEnvironment('GITLAB_SECRET', gitLabSecret);
-    handleGitLabAuthRedirectLambda.addEnvironment('CUSTOM_DOMAIN_NAME', customDomainName);
-    handleGitLabAuthRedirectLambda.addEnvironment('LAMBDA_VERSION', lambdaVersion);
-    handleGitLabAuthRedirectLambda.addEnvironment('GITBOT_URL', gitbotUrl);
+    // Allow read access to the secret it needs
+    props.gitBotSecret.grantRead(handleGitLabAuthRedirectLambda);
     
     // Get hold of the hosted zone which has previously been created
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'R53Zone', {
