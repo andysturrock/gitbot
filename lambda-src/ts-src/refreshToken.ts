@@ -1,4 +1,5 @@
 import axios, {AxiosRequestConfig} from 'axios';
+import {getSecretValue} from './awsAPI';
 
 export type TokenResponse = {
   access_token: string,
@@ -20,18 +21,9 @@ export async function refreshToken(refreshToken: string) {
 
   // TODO Cache the token while it is still valid rather
   // than going back to the API each call.
-  const client_id = process.env.GITLAB_APPID;
-  if(!client_id) {
-    throw new Error("Missing env var GITLAB_APPID");
-  }
-  const client_secret = process.env.GITLAB_SECRET;
-  if(!client_secret) {
-    throw new Error("Missing env var GITLAB_SECRET");
-  }
-  const gitbotUrl = process.env.GITBOT_URL;
-  if(!gitbotUrl) {
-    throw new Error("Missing env var GITBOT_URL");
-  }
+  const client_id = await getSecretValue('GitBot', 'gitLabAppId');
+  const client_secret = await getSecretValue('GitBot', 'gitLabSecret');
+  const gitbotUrl = await getSecretValue('GitBot', 'gitBotUrl');
   const redirect_uri = `${gitbotUrl}/gitlab-oauth-redirect`;
 
   const config: AxiosRequestConfig = {

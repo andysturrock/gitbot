@@ -3,6 +3,7 @@ import {createProjectHook, editProjectHook, getProjectDetailsById, getProjectDet
 import {ProjectConfig, putProjectConfig} from './projectConfigTable';
 import {ProjectDetails, ProjectHookDetails} from './gitLabTypes';
 import {postMarkdownAsBlocksToUrl} from './slackAPI';
+import {getSecretValue} from './awsAPI';
 
 /**
  * Handle the project argument of the slash command.
@@ -10,19 +11,8 @@ import {postMarkdownAsBlocksToUrl} from './slackAPI';
  * @returns void but posts the login message to Slack in response to the slash command.
  */
 export async function handleProjectCommand(slashCommandPayload: SlashCommandPayload): Promise<void> {
-  const gitLabBotToken = process.env.GITLAB_BOT_TOKEN;
-  if(!gitLabBotToken) {
-    throw new Error("Missing env var GITLAB_BOT_TOKEN");
-  }
-  const customDomainName = process.env.CUSTOM_DOMAIN_NAME;
-  if(!customDomainName) {
-    throw new Error("Missing env var CUSTOM_DOMAIN_NAME");
-  }
-  const lambdaVersion = process.env.LAMBDA_VERSION;
-  if(!lambdaVersion) {
-    throw new Error("Missing env var LAMBDA_VERSION");
-  }
-  const lambdaVersionIdForURL = lambdaVersion.replace(/\./g, '_');
+  const gitLabBotToken = await getSecretValue('GitBot', 'gitLabBotToken');
+  const gitBotUrl = await getSecretValue('GitBot', 'gitBotUrl');
 
   try {   
     let projectDetails: ProjectDetails[];
@@ -50,7 +40,7 @@ export async function handleProjectCommand(slashCommandPayload: SlashCommandPayl
 
       const existingHooks = await listProjectHooks(gitLabBotToken, projectId);
       // Find any hooks that we have already created.
-      const ourUrl = `https://gitbot.${customDomainName}/${lambdaVersionIdForURL}/projecthook-event`;
+      const ourUrl = `${gitBotUrl}/projecthook-event`;
       const ourHooks = existingHooks.filter(hook => {
         return hook.url === ourUrl;
       });

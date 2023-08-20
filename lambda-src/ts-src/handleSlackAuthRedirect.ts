@@ -1,6 +1,7 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from "aws-lambda";
 import axios, {AxiosRequestConfig} from "axios";
 import util from 'util';
+import {getSecretValue} from "./awsAPI";
 
 export async function handleSlackAuthRedirect(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -10,14 +11,8 @@ export async function handleSlackAuthRedirect(event: APIGatewayProxyEvent): Prom
       state: string // TODO use this to prevent CSRF attacks
     };
 
-    const client_id = process.env.SLACK_CLIENT_ID;
-    if(!client_id) {
-      throw new Error("Missing env var SLACK_CLIENT_ID");
-    }
-    const client_secret = process.env.SLACK_CLIENT_SECRET;
-    if(!client_secret) {
-      throw new Error("Missing env var SLACK_CLIENT_SECRET");
-    }
+    const slackClientId = await getSecretValue('GitBot', 'slackClientId');
+    const slackClientSecret = await getSecretValue('GitBot', 'slackClientSecret');
 
     const queryStringParameters: QueryStringParameters = event.queryStringParameters as QueryStringParameters;
     if(!event.queryStringParameters) {
@@ -28,8 +23,8 @@ export async function handleSlackAuthRedirect(event: APIGatewayProxyEvent): Prom
     const config: AxiosRequestConfig = {
       params: {
         code,
-        client_id,
-        client_secret
+        client_id: slackClientId,
+        client_secret: slackClientSecret
       },
       headers: { 
         "Content-Type": "application/x-www-form-urlencoded"

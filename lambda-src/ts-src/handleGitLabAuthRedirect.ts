@@ -4,6 +4,7 @@ import {UserData, putUserData} from './userDataTable';
 import {deleteState, getState} from './stateTable';
 import {getOIDCUserInfo} from './gitLabAPI';
 import {postMarkdownAsBlocksToUrl} from './slackAPI';
+import {getSecretValue} from "./awsAPI";
 
 export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -22,18 +23,9 @@ export async function handleGitLabAuthRedirect(event: APIGatewayProxyEvent): Pro
     }
     await deleteState(nonce);
     
-    const client_id = process.env.GITLAB_APPID;
-    if(!client_id) {
-      throw new Error("Missing env var GITLAB_APPID");
-    }
-    const client_secret = process.env.GITLAB_SECRET;
-    if(!client_secret) {
-      throw new Error("Missing env var GITLAB_SECRET");
-    }
-    const gitbotUrl = process.env.GITBOT_URL;
-    if(!gitbotUrl) {
-      throw new Error("Missing env var GITBOT_URL");
-    }
+    const client_id = await getSecretValue('GitBot', 'gitLabAppId');
+    const client_secret = await getSecretValue('GitBot', 'gitLabSecret');
+    const gitbotUrl = await getSecretValue('GitBot', 'gitBotUrl');
     const redirect_uri = `${gitbotUrl}/gitlab-oauth-redirect`;
 
     const config: AxiosRequestConfig = {

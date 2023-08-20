@@ -3,6 +3,7 @@ dotenv.config();
 
 import {StackProps} from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 
 /**
  * Returns value of given environment variable, which may be read from .env file.
@@ -25,4 +26,5 @@ export interface LambdaStackProps extends StackProps {
   readonly userDataTable: dynamodb.Table;
   readonly stateTable: dynamodb.Table;
   readonly projectConfigTable: dynamodb.Table;
+  readonly gitBotSecret: secretsmanager.ISecret;
 }
