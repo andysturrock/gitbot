@@ -53,24 +53,36 @@ export async function handlePipelineApproval(payload: InteractionPayload): Promi
     }
 
     if(actionValue.action == "approve") {
-      await approveDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
-      // Play the pipeline as the bot.  The users may have permissions to approve, but not to play.
-      const playing = await playJob(gitLabBotToken, actionValue.project_id, actionValue.build_id);
-      if(playing) {
-        // Fine to replace original
-        await postMarkdownAsBlocksToUrl(payload.response_url, "Approval succeeded, pipeline job now running.", "Pipeline job approved", true);
+      if(await approveDeployment(accessToken, actionValue.project_id, actionValue.deployment_id)) {
+        // Play the pipeline as the bot.  The users may have permissions to approve, but not to play.
+        const playing = await playJob(gitLabBotToken, actionValue.project_id, actionValue.build_id);
+        if(playing) {
+          // Fine to replace original
+          await postMarkdownAsBlocksToUrl(payload.response_url, "Approval succeeded, pipeline job now running.", "Pipeline job approved", true);
+        }
+        else {
+          // Ephemeral, not replacing original approval card
+          await postMarkdownAsBlocks(app, payload.channel.id, `<@${payload.user.id}> approved but more approvals required before pipeline job can run.`,
+            "Pipeline job partially approved", payload.user.id);
+        }
       }
       else {
         // Ephemeral, not replacing original approval card
-        await postMarkdownAsBlocks(app, payload.channel.id, `<@${payload.user.id}> approved but more approvals required before pipeline job can run.`,
-          "Pipeline job partially approved", payload.user.id);
+        await postMarkdownAsBlocks(app, payload.channel.id, `<@${payload.user.id}> does not have permission to approve the pipeline.`,
+          "Permission denied", payload.user.id);
       }
     }
     else 
     {
-      await rejectDeployment(accessToken, actionValue.project_id, actionValue.deployment_id);
-      // Fine to replace original
-      await postMarkdownAsBlocksToUrl(payload.response_url, "Pipeline rejected", "Pipeline rejected", true);
+      if(await rejectDeployment(accessToken, actionValue.project_id, actionValue.deployment_id)) {
+        // Fine to replace original
+        await postMarkdownAsBlocksToUrl(payload.response_url, "Pipeline rejected", "Pipeline rejected", true);
+      }
+      else {
+        // Ephemeral, not replacing original approval card
+        await postMarkdownAsBlocks(app, payload.channel.id, `<@${payload.user.id}> does not have permission to reject the pipeline.`,
+          "Permission denied", payload.user.id);
+      }
     }
   }
   catch (error) {
