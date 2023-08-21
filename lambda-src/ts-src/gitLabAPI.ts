@@ -107,12 +107,14 @@ export async function getDeploymentsWithDeployableId(token: string, projectId: n
 
 /**
  * Reject a deployment which is blocked at an approval stage due to a protected environment.
- * @param token access token for the user doing the approval
+ * @param token access token for the user doing the reject
  * @param projectId GitLab project id
- * @param deploymentId id of the deployment to approve
+ * @param deploymentId id of the deployment to reject
+ * @returns true if the rejection succeeded, false if user doesn't have permission
+ * @throws Error if the rejection failed for a reason other than permission denied
  */
 export async function rejectDeployment(token: string, projectId: number, deploymentId: number) {
-  await approveOrRejectDeployment(token, projectId, deploymentId, "rejected");
+  return await approveOrRejectDeployment(token, projectId, deploymentId, "rejected");
 }
 
 /**
@@ -120,16 +122,20 @@ export async function rejectDeployment(token: string, projectId: number, deploym
  * @param token access token for the user doing the approval
  * @param projectId GitLab project id
  * @param deploymentId id of the deployment to approve
+ * @returns true if the approval succeeded, false if user doesn't have permission
+ * @throws Error if the approval failed for a reason other than permission denied
  */
 export async function approveDeployment(token: string, projectId: number, deploymentId: number) {
-  await approveOrRejectDeployment(token, projectId, deploymentId, "approved");
+  return await approveOrRejectDeployment(token, projectId, deploymentId, "approved");
 }
 
 async function approveOrRejectDeployment(token: string, projectId: number, deploymentId: number, status: "approved" | "rejected") {
   const url = `https://gitlab.com/api/v4/projects/${projectId}/deployments/${deploymentId}/approval`;
 
   const config = {
-    headers: {Authorization: `Bearer ${token}`}
+    headers: {Authorization: `Bearer ${token}`},
+    // By default Axios throws for non 2xx.  We want to check for 400 below.
+    validateStatus: () => true,
   };
 
   const data = {
@@ -145,7 +151,19 @@ async function approveOrRejectDeployment(token: string, projectId: number, deplo
     comment: string
   };
 
-  await axios.post<ApprovalResponse>(url, data, config);
+  // New scope so we can reuse the name "status"
+  {
+    const {status} = await axios.post<ApprovalResponse>(url, data, config);
+    if(status == 400) {
+      return false;
+    }
+    // Some other error
+    if(status != 200 && status != 201) {
+      console.error("Error calling deployment approval API:", status);
+      throw new Error("Error calling deployment approval API");
+    }
+    return true;
+  }
 }
 
 /**
