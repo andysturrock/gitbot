@@ -1,7 +1,7 @@
 
 import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, QueryCommandInput, ScanCommand, ScanCommandInput} from '@aws-sdk/client-dynamodb';
 
-const TableName = "ProjectConfig";
+const TableName = "GitBot_ProjectConfig";
 
 export type ProjectConfig = {
   project_id: number,

@@ -7,7 +7,7 @@ import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, Query
 // This state should be fairly short-lived as it's just to
 // mitigage CSRF attacks on the login redirect.
 const TTL_IN_MS = 1000 * 30; // 30 seconds
-const TableName = "State";
+const TableName = "GitBot_State";
 
 export type State = {
   nonce: string,
