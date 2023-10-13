@@ -11,7 +11,7 @@ export class DynamoDBStack extends Stack {
     super(scope, id, props);
 
     this.userDataTable = new dynamodb.Table(this, 'UserDataTable', {
-      tableName: "UserData",
+      tableName: "GitBot_UserData",
       partitionKey: {name: 'slack_user_id', type: dynamodb.AttributeType.STRING},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiry',
@@ -19,7 +19,7 @@ export class DynamoDBStack extends Stack {
     });
 
     this.stateTable = new dynamodb.Table(this, 'StateTable', {
-      tableName: "State",
+      tableName: "GitBot_State",
       partitionKey: {name: 'nonce', type: dynamodb.AttributeType.STRING},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiry',
@@ -27,7 +27,7 @@ export class DynamoDBStack extends Stack {
     });
 
     this.projectConfigTable = new dynamodb.Table(this, 'ProjectConfigTable', {
-      tableName: "ProjectConfig",
+      tableName: "GitBot_ProjectConfig",
       partitionKey: {name: 'project_id', type: dynamodb.AttributeType.NUMBER},
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY

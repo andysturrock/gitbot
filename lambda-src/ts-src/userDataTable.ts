@@ -9,7 +9,7 @@ import {DynamoDBClient, PutItemCommand, PutItemCommandInput, QueryCommand, Query
 // If the user has accessed any functionality then the token and the TTL will
 // be refreshed so the 7 days is really 7 days after last usage.
 const TTL_IN_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days
-const TableName = "UserData";
+const TableName = "GitBot_UserData";
 
 export type UserData = {
   gitlab_user_id: number,
